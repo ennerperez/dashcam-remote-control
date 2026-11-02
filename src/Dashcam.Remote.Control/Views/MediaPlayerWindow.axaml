@@ -1,0 +1,159 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svg="clr-namespace:Avalonia.Svg;assembly=Svg.Controls.Avalonia"
+        xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
+        xmlns:controls="using:Dashcam.Remote"
+        xmlns:vm="using:Dashcam.Remote"
+        xmlns:remote="clr-namespace:Dashcam.Remote"
+        x:Class="Dashcam.Remote.MediaPlayerWindow"
+        x:DataType="controls:PlaybackViewModel"
+        Icon="/Assets/Icons/dashcam-remote-control.ico"
+        Title="Dashcam Player"
+        Width="1280" Height="820" MinWidth="720" MinHeight="500"
+        CanResize="True" Background="#061632"
+        WindowStartupLocation="CenterOwner">
+  <Window.Styles>
+    <Style Selector="Button.camera">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="Button.camera.active">
+      <Setter Property="Background" Value="#31578F" />
+      <Setter Property="BorderBrush" Value="#A9C9FF" />
+    </Style>
+  </Window.Styles>
+  <Grid RowDefinitions="*,Auto,Auto" ColumnDefinitions="2.1*,1*" RowSpacing="10" ColumnSpacing="10" Margin="12">
+    <Grid x:Name="VideoAndMapGrid" Grid.Row="0" Grid.ColumnSpan="2" ColumnDefinitions="2.1*,1*" ColumnSpacing="10">
+      <Border x:Name="VideoPanel" Grid.Column="0" Background="#05070B" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="0" ClipToBounds="True">
+        <vlc:VideoView x:Name="VideoSurface">
+          <Grid x:Name="VideoOverlay" Background="#01000000">
+            <Border VerticalAlignment="Top" Background="#C9061632" Padding="12,8">
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+                <TextBlock Text="{Binding MediaTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding SelectedCameraName}" Foreground="#A9C9FF" VerticalAlignment="Center" />
+                <Button Grid.Column="2" Command="{Binding ToggleFullscreenCommand}" ToolTip.Tip="Toggle video fullscreen" Width="34" Height="30" Padding="6">
+                  <svg:Svg Path="/Assets/Icons/fullscreen.svg" Width="18" Height="18" Stretch="Uniform" />
+                </Button>
+              </Grid>
+            </Border>
+            <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom" Orientation="Horizontal" Margin="12" Spacing="6">
+              <TextBlock Text="{Binding ZoomText}" Foreground="White" VerticalAlignment="Center" />
+              <Slider x:Name="ZoomSlider" Minimum="1" Maximum="2" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding Zoom, Mode=TwoWay}" Width="112" VerticalAlignment="Center" ToolTip.Tip="Zoom video from 1× to 2×" />
+              <Button Classes="camera" Classes.active="{Binding IsFrontSelected}" Command="{Binding SelectCameraCommand}" CommandParameter="0" ToolTip.Tip="Front camera" Padding="10,6" MinWidth="74">
+                <StackPanel Orientation="Horizontal" Spacing="5"><svg:Svg Path="/Assets/Icons/video_camera_front.svg" Width="16" Height="16" Stretch="Uniform"/><TextBlock Text="Front"/></StackPanel>
+              </Button>
+              <Button Classes="camera" Classes.active="{Binding IsRearSelected}" Command="{Binding SelectCameraCommand}" CommandParameter="1" ToolTip.Tip="Rear camera" Padding="10,6" MinWidth="74" IsVisible="{Binding HasRearCamera}">
+                <StackPanel Orientation="Horizontal" Spacing="5"><svg:Svg Path="/Assets/Icons/videocam.svg" Width="16" Height="16" Stretch="Uniform"/><TextBlock Text="Rear"/></StackPanel>
+              </Button>
+            </StackPanel>
+            <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12" Padding="8,4" Background="#C9061632" CornerRadius="4" IsHitTestVisible="False">
+              <TextBlock Text="{Binding PlaybackStatus}" Foreground="White" FontSize="12" />
+            </Border>
+          </Grid>
+        </vlc:VideoView>
+      </Border>
+
+      <Border x:Name="MapPanel" Grid.Column="1" Background="#0C2B68" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="8" Padding="10">
+        <Grid RowDefinitions="Auto,*" RowSpacing="8">
+          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="GPS Route" FontSize="15" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding GpsTrackStatus}" FontSize="11" Foreground="#A9C9FF" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Button Grid.Column="1" Command="{Binding ExportGpsCommand}" ToolTip.Tip="Export GPS as GPX" Width="36" Height="36" Padding="8">
+              <svg:Svg Path="/Assets/Icons/download.svg" Width="19" Height="19" Stretch="Uniform" />
+            </Button>
+            <Button Grid.Column="2" Command="{Binding ExportRoutePngCommand}" ToolTip.Tip="Export route map as PNG" Width="36" Height="36" Padding="8">
+              <svg:Svg Path="/Assets/Icons/photo_camera.svg" Width="19" Height="19" Stretch="Uniform" />
+            </Button>
+          </Grid>
+          <Border Grid.Row="1" Background="#E7EEF5" CornerRadius="5" ClipToBounds="True">
+            <Grid>
+              <controls:GpsRouteMapControl x:Name="GpsMap" Points="{Binding GpsPoints}" CurrentPoint="{Binding GpsCurrentPoint}" MeanSpeedKmh="{Binding MeanPointSpeedKmh}" SpeedDeviationKmh="{Binding SpeedStandardDeviationKmh}" />
+              <TextBlock Text="© OpenStreetMap contributors" FontSize="9" Foreground="#27364A" Background="#CCFFFFFF" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="4" Padding="3,1" />
+            </Grid>
+          </Border>
+        </Grid>
+      </Border>
+    </Grid>
+
+    <Border x:Name="TelemetryPanel" Grid.Row="1" Grid.Column="0" Background="#0C2B68" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="8" Padding="12">
+      <Grid RowDefinitions="*,*" ColumnDefinitions="*,*,*,*" RowSpacing="8" ColumnSpacing="12">
+        <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="SPEED" FontSize="10" Foreground="#A9C9FF" />
+          <TextBlock Text="{Binding CurrentSpeedText}" FontSize="16" FontWeight="SemiBold" />
+        </StackPanel>
+        <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="MAX" FontSize="10" Foreground="#A9C9FF" />
+          <TextBlock Text="{Binding MaximumSpeedText}" FontSize="16" FontWeight="SemiBold" />
+        </StackPanel>
+        <StackPanel Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="MIN" FontSize="10" Foreground="#A9C9FF" />
+          <TextBlock Text="{Binding MinimumSpeedText}" FontSize="16" FontWeight="SemiBold" />
+        </StackPanel>
+        <StackPanel Grid.Row="0" Grid.Column="3" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="AVERAGE" FontSize="10" Foreground="#A9C9FF" />
+          <TextBlock Text="{Binding AverageSpeedText}" FontSize="16" FontWeight="SemiBold" />
+        </StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="DISTANCE" FontSize="10" Foreground="#A9C9FF" />
+          <TextBlock Text="{Binding DistanceText}" FontSize="16" FontWeight="SemiBold" />
+        </StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="LATITUDE" FontSize="10" Foreground="#A9C9FF" />
+          <TextBlock Text="{Binding LatitudeText}" FontSize="16" FontWeight="SemiBold" />
+        </StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="LONGITUDE" FontSize="10" Foreground="#A9C9FF" />
+          <TextBlock Text="{Binding LongitudeText}" FontSize="16" FontWeight="SemiBold" />
+        </StackPanel>
+        <StackPanel Grid.Row="1" Grid.Column="3" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="ALTITUDE" FontSize="10" Foreground="#A9C9FF" />
+          <TextBlock Text="{Binding AltitudeText}" FontSize="16" FontWeight="SemiBold" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Border x:Name="SpeedDistributionPanel" Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Background="#0C2B68" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="8" Padding="10">
+      <Grid RowDefinitions="Auto,*" RowSpacing="4">
+          <Grid ColumnDefinitions="*,Auto,Auto">
+            <StackPanel VerticalAlignment="Center" Spacing="2">
+              <TextBlock Text="Speed Distribution" FontSize="15" FontWeight="SemiBold" />
+              <TextBlock Text="{Binding SpeedDistributionSummary}" FontSize="11" Foreground="#A9C9FF" TextTrimming="CharacterEllipsis" />
+            </StackPanel>
+            <Button Grid.Column="1" Command="{Binding ExportSpeedCsvCommand}" ToolTip.Tip="Export speed data as CSV" Width="36" Height="36" Padding="8">
+              <svg:Svg Path="/Assets/Icons/download.svg" Width="19" Height="19" Stretch="Uniform" />
+            </Button>
+            <Button Grid.Column="2" Command="{Binding ExportSpeedChartPngCommand}" ToolTip.Tip="Export speed distribution chart as PNG" Width="36" Height="36" Padding="8">
+              <svg:Svg Path="/Assets/Icons/photo_camera.svg" Width="19" Height="19" Stretch="Uniform" />
+            </Button>
+          </Grid>
+          <controls:SpeedDistributionChart x:Name="SpeedDistributionChart" Grid.Row="1" Points="{Binding GpsPoints}" MinHeight="62" />
+      </Grid>
+    </Border>
+
+    <Border x:Name="PlaybackControlsPanel" Grid.Row="2" Grid.Column="0" Background="#0C2B68" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="8" Padding="12">
+      <Grid RowDefinitions="Auto,Auto" RowSpacing="10">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+          <TextBlock Text="{Binding CurrentTimeText}" Foreground="#DCEBFF" VerticalAlignment="Center" />
+          <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Position, Mode=TwoWay}" IsEnabled="{Binding CanSeek}" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="2" Text="{Binding DurationText}" Foreground="#DCEBFF" VerticalAlignment="Center" />
+        </Grid>
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*">
+          <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+            <Button Command="{Binding SeekBackwardCommand}" ToolTip.Tip="Back 10 seconds" Width="42" Height="38" Padding="8"><svg:Svg Path="/Assets/Icons/replay_10.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
+            <Button Command="{Binding TogglePlaybackCommand}" ToolTip.Tip="{Binding PlaybackButtonLabel}" Width="42" Height="38" Padding="8">
+              <svg:Svg Path="{Binding PlaybackButtonIconPath}" Width="20" Height="20" Stretch="Uniform"/>
+            </Button>
+            <Button Command="{Binding SeekForwardCommand}" ToolTip.Tip="Forward 10 seconds" Width="42" Height="38" Padding="8"><svg:Svg Path="/Assets/Icons/forward_10.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
+            <Button Command="{Binding StopPlaybackCommand}" ToolTip.Tip="Stop" Width="42" Height="38" Padding="8"><svg:Svg Path="/Assets/Icons/stop_circle.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
+            <Button Command="{Binding ToggleMuteCommand}" ToolTip.Tip="{Binding MuteButtonLabel}" Width="42" Height="38" Padding="8"><svg:Svg Path="{Binding MuteButtonIconPath}" Width="20" Height="20" Stretch="Uniform" /></Button>
+          </StackPanel>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+            <Button Command="{Binding ExportMp4Command}" ToolTip.Tip="Export selected camera to MP4" Width="42" Height="38" Padding="8"><svg:Svg Path="/Assets/Icons/download.svg" Width="20" Height="20" Stretch="Uniform"/></Button>
+          </StackPanel>
+        </Grid>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

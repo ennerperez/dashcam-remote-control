@@ -1,0 +1,28 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Dashcam.Remote"
+        xmlns:remote="clr-namespace:Dashcam.Remote"
+        x:Class="Dashcam.Remote.ImagePreviewWindow"
+        Icon="/Assets/Icons/dashcam-remote-control.ico"
+        Title="Dashcam Photo Preview"
+        Width="900" Height="650" MinWidth="500" MinHeight="360"
+        CanResize="True" Background="#061632"
+        WindowStartupLocation="CenterOwner">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <ItemsControl x:Name="PreviewItems" ItemsSource="{Binding Images}">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate><UniformGrid Rows="1" Columns="{Binding ColumnCount}" /></ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="vm:PreviewImageItem">
+          <Grid RowDefinitions="Auto,*" Margin="6" RowSpacing="8" HorizontalAlignment="Stretch">
+            <TextBlock Text="{Binding Label}" HorizontalAlignment="Center" Foreground="#DCEBFF" />
+            <Border Grid.Row="1" Background="#05070B" CornerRadius="6" Padding="8">
+              <Image Source="{Binding Image}" Stretch="Uniform" />
+            </Border>
+          </Grid>
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+  </ScrollViewer>
+</Window>
