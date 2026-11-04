@@ -57,7 +57,7 @@ namespace Dashcam.Remote
             _api = api ?? new DeviceApi();
             FileExplorer = new FileExplorerViewModel(_api);
             ConnectCommand = new AsyncCommand(ConnectOrDisconnectAsync, () => IsConnecting || IsConnected || IsValidIpv4(DeviceIp), allowWhileRunning: true);
-            NavigateCommand = new RelayCommand(parameter => SelectedTabIndex = Convert.ToInt32(parameter, CultureInfo.InvariantCulture), _ => IsNavigationEnabled);
+            NavigateCommand = new RelayCommand(parameter => SelectedTabIndex = Convert.ToInt32(parameter, CultureInfo.InvariantCulture), parameter => IsNavigationEnabled || (Convert.ToInt32(parameter, CultureInfo.InvariantCulture) == 3 && IsFileExplorerNavigationEnabled));
             RefreshCommand = new AsyncCommand(RefreshDeviceAsync, () => IsConnected);
             ClearActivityCommand = new RelayCommand(_ => ActivityText = string.Empty);
             ToggleActivityCommand = new RelayCommand(_ => IsActivityCollapsed = !IsActivityCollapsed);
@@ -158,7 +158,7 @@ namespace Dashcam.Remote
                     _connectionTimer.Stop();
                 }
 
-                OnPropertyChanged(nameof(IsNavigationEnabled)); OnPropertyChanged(nameof(IsHostEnabled)); NotifyConnectionPresentation(); NotifyCommands();
+                OnPropertyChanged(nameof(IsNavigationEnabled)); OnPropertyChanged(nameof(IsFileExplorerNavigationEnabled)); OnPropertyChanged(nameof(IsHostEnabled)); NotifyConnectionPresentation(); NotifyCommands();
             }
         }
         public bool IsConnecting
@@ -174,6 +174,7 @@ namespace Dashcam.Remote
             }
         }
         public bool IsNavigationEnabled => IsConnected && !IsLivePreviewActive;
+        public bool IsFileExplorerNavigationEnabled => !IsLivePreviewActive;
         public bool IsHostEnabled => !IsConnected && !IsConnecting;
         public bool IsActivityCollapsed
         {
@@ -316,6 +317,7 @@ namespace Dashcam.Remote
                 }
 
                 OnPropertyChanged(nameof(IsNavigationEnabled));
+                OnPropertyChanged(nameof(IsFileExplorerNavigationEnabled));
                 NotifyCommands();
                 if (value)
                 {
@@ -1314,6 +1316,7 @@ namespace Dashcam.Remote
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
+        public event Action? Finished;
         public string Name { get; }
         public string[] Labels { get; }
         public int[] Indexes { get; }
@@ -1335,8 +1338,12 @@ namespace Dashcam.Remote
 
         private async Task ApplySelectionAsync(int index)
         {
-            try { await _apply(index); }
+            try
+            {
+                await _apply(index);
+            }
             catch (Exception exception) { _failed(exception); }
+            finally { Finished?.Invoke(); }
         }
     }
 
@@ -1363,16 +1370,26 @@ namespace Dashcam.Remote
 
             if (_isRunning && allowWhileRunning)
             {
-                await execute();
+                try { await execute(); }
+                finally { Finished?.Invoke(); }
                 return;
             }
             _isRunning = true;
             RaiseCanExecuteChanged();
-            try { await execute(); }
+            try
+            {
+                await execute();
+            }
             catch (Exception exception) { Failed?.Invoke(exception); }
-            finally { _isRunning = false; RaiseCanExecuteChanged(); }
+            finally
+            {
+                _isRunning = false;
+                RaiseCanExecuteChanged();
+                Finished?.Invoke();
+            }
         }
         public event Action<Exception>? Failed;
+        public event Action? Finished;
         public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -1391,10 +1408,19 @@ namespace Dashcam.Remote
 
             _isRunning = true;
             CanExecuteChanged?.Invoke(this, EventArgs.Empty);
-            try { await execute(parameter); }
+            try
+            {
+                await execute(parameter);
+            }
             catch (Exception exception) { Failed?.Invoke(exception); }
-            finally { _isRunning = false; CanExecuteChanged?.Invoke(this, EventArgs.Empty); }
+            finally
+            {
+                _isRunning = false;
+                CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+                Finished?.Invoke();
+            }
         }
+        public event Action? Finished;
         public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 }

@@ -10,8 +10,10 @@ namespace Dashcam.Remote
     public sealed partial class ExplorerFileItem : INotifyPropertyChanged
     {
         private readonly Action<ExplorerFileItem> _refreshDownloadState;
+        private readonly Func<ExplorerFileItem, bool> _canDownload;
         private readonly Func<ExplorerFileItem, bool> _canCancel;
         private bool _isDownloading;
+        private bool _isDownloadStatusVisible;
         private double _downloadProgress;
         private string _downloadStatus = string.Empty;
 
@@ -20,6 +22,7 @@ namespace Dashcam.Remote
             bool isGrouped,
             string displayName,
             Func<ExplorerFileItem, Task> download,
+            Func<ExplorerFileItem, bool> canDownload,
             Func<ExplorerFileItem, Task> delete,
             Func<ExplorerFileItem, Task> preview,
             Action<ExplorerFileItem> cancel,
@@ -30,8 +33,9 @@ namespace Dashcam.Remote
             IsGrouped = isGrouped;
             DisplayName = displayName;
             _refreshDownloadState = refreshDownloadState;
+            _canDownload = canDownload;
             _canCancel = canCancel;
-            DownloadCommand = new AsyncCommand(() => download(this));
+            DownloadCommand = new AsyncCommand(() => download(this), () => _canDownload(this));
             DeleteCommand = new AsyncCommand(() => delete(this));
             PreviewCommand = new AsyncCommand(() => preview(this));
             CancelDownloadCommand = new RelayCommand(_ => cancel(this), _ => canCancel(this));
@@ -58,7 +62,15 @@ namespace Dashcam.Remote
         public string CameraLabel { get; }
         public IReadOnlyList<string> FileNames { get; }
         public long Size { get; }
-        public string SizeText => Humanizer.ByteSize.FromBytes(Size).ToString("0.##", CultureInfo.CurrentCulture);
+        public string SizeText
+        {
+            get
+            {
+                var formattedSize = Humanizer.ByteSize.FromBytes(Size).ToString("0.##", CultureInfo.CurrentCulture);
+                var unitSeparator = formattedSize.LastIndexOf(' ');
+                return unitSeparator < 0 ? $"{formattedSize} MB" : $"{formattedSize[..unitSeparator]} MB";
+            }
+        }
         public int Duration { get; }
         public bool HasDuration { get; }
         public string DurationText => TimeSpan.FromSeconds(Duration).ToString(Duration >= 3600 ? @"h\:mm\:ss" : @"m\:ss", CultureInfo.CurrentCulture);
@@ -67,6 +79,7 @@ namespace Dashcam.Remote
         public ICommand PreviewCommand { get; }
         public ICommand CancelDownloadCommand { get; }
         public bool IsDownloading { get => _isDownloading; private set => Set(ref _isDownloading, value); }
+        public bool IsDownloadStatusVisible { get => _isDownloadStatusVisible; private set => Set(ref _isDownloadStatusVisible, value); }
         public bool CanCancelDownload => _canCancel(this);
         public double DownloadProgress { get => _downloadProgress; private set => Set(ref _downloadProgress, value); }
         public string DownloadStatus { get => _downloadStatus; private set => Set(ref _downloadStatus, value); }
@@ -74,15 +87,17 @@ namespace Dashcam.Remote
         public void RefreshDownloadState()
         {
             _refreshDownloadState(this);
+            ((AsyncCommand)DownloadCommand).RaiseCanExecuteChanged();
             OnPropertyChanged(nameof(CanCancelDownload));
             ((RelayCommand)CancelDownloadCommand).RaiseCanExecuteChanged();
         }
 
-        public void SetDownloadState(bool active, double progress, string status)
+        public void SetDownloadState(bool active, double progress, string status, bool showStatus = true)
         {
             IsDownloading = active;
             DownloadProgress = progress;
             DownloadStatus = status;
+            IsDownloadStatusVisible = showStatus;
             OnPropertyChanged(nameof(CanCancelDownload));
             ((RelayCommand)CancelDownloadCommand).RaiseCanExecuteChanged();
         }
@@ -223,19 +238,22 @@ namespace Dashcam.Remote
     public sealed class StorageFolderItem : INotifyPropertyChanged
     {
         private readonly Func<string, bool> _hasActiveDownloads;
+        private readonly Func<string, bool> _canDownload;
         private int _fileCount;
         private bool _isOpen;
 
-        public StorageFolderItem(string name, Func<string, Task> downloadAll, Action<string> cancelDownloads, Func<string, bool> hasActiveDownloads)
+        public StorageFolderItem(string name, Func<string, Task> downloadAll, Action<string> cancelDownloads, Func<string, bool> hasActiveDownloads, Func<string, bool> canDownload)
         {
             Name = name;
             _hasActiveDownloads = hasActiveDownloads;
-            DownloadAllCommand = new AsyncCommand(() => downloadAll(Name));
-            CancelDownloadsCommand = new RelayCommand(_ => cancelDownloads(Name));
+            _canDownload = canDownload;
+            DownloadAllCommand = new AsyncCommand(() => downloadAll(Name), () => _canDownload(Name));
+            CancelDownloadsCommand = new RelayCommand(_ => cancelDownloads(Name), _ => HasActiveDownloads);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         public string Name { get; }
+        public string DisplayName => Path.GetFileName(Name.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         public bool HasActiveDownloads => _hasActiveDownloads(Name);
         public int FileCount
         {
@@ -246,7 +264,9 @@ namespace Dashcam.Remote
                     return;
                 }
 
-                _fileCount = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FileCount)));
+                _fileCount = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(FileCount)));
+                ((AsyncCommand)DownloadAllCommand).RaiseCanExecuteChanged();
             }
         }
         public bool IsOpen
@@ -264,7 +284,12 @@ namespace Dashcam.Remote
         public string IconPath => IsOpen ? "/Assets/Icons/folder_open.svg" : "/Assets/Icons/folder.svg";
         public ICommand DownloadAllCommand { get; }
         public ICommand CancelDownloadsCommand { get; }
-        public void RefreshDownloadState() => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasActiveDownloads)));
+        public void RefreshDownloadState()
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasActiveDownloads)));
+            ((AsyncCommand)DownloadAllCommand).RaiseCanExecuteChanged();
+            ((RelayCommand)CancelDownloadsCommand).RaiseCanExecuteChanged();
+        }
     }
 
     public sealed class DownloadQueueItem(DeviceFile file)

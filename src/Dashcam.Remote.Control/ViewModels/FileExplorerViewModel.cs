@@ -15,12 +15,15 @@ namespace Dashcam.Remote
         private readonly DeviceApi _api;
         private readonly Dictionary<string, List<DeviceFile>> _filesByFolder = new(StringComparer.OrdinalIgnoreCase);
         private readonly List<DeviceFile> _manifestFiles = [];
+        private readonly List<DeviceFile> _localFiles = [];
         private readonly List<Bitmap> _thumbnails = [];
         private readonly Dictionary<string, DownloadQueueItem> _activeDownloads = new(StringComparer.OrdinalIgnoreCase);
-        private readonly SemaphoreSlim _downloadSlots = new(2, 2);
+        private readonly Dictionary<string, DownloadQueueItem> _downloadHistory = new(StringComparer.OrdinalIgnoreCase);
+        private readonly SemaphoreSlim _downloadSlots = new(5, 5);
+        private readonly SemaphoreSlim _manifestSaveGate = new(1, 1);
         private CancellationTokenSource? _fileLoadCancellation;
         private CancellationTokenSource? _thumbnailLoadCancellation;
-        private string _selectedFolder = "SDCard";
+        private string _selectedFolder = "Choose a local folder";
         private string _fileCountText = "No files";
         private string _selectedFileDetails = "Select a file.";
         private string _selectedDetailsHeader = "File details";
@@ -36,20 +39,20 @@ namespace Dashcam.Remote
         private int _thumbnailIndex;
         private string? _loadedManifestHost;
         private string? _downloadDirectory;
+        private string? _localRootDirectory;
+        private string? _selectedLocalDirectory;
 
         public FileExplorerViewModel(DeviceApi api)
         {
             _api = api;
-            foreach (var name in new[] { "loop", "emr", "event", "park" })
-            {
-                var folder = new StorageFolderItem(name, DownloadFolderAsync, CancelFolderDownloads, FolderHasActiveDownloads);
-                ((AsyncCommand)folder.DownloadAllCommand).Failed += exception => CommandFailed?.Invoke(exception);
-                FileFolders.Add(folder);
-            }
+            SetDeviceFolders();
 
             EnterCommand = new AsyncCommand(EnterAsync, () => IsConnected);
             RefreshCommand = new AsyncCommand(RefreshFromDeviceAsync, () => IsConnected);
             SelectSdCardCommand = new RelayCommand(_ => SelectedFolder = "SDCard", _ => IsConnected);
+            ChooseLocalFolderCommand = new AsyncCommand(ChooseLocalFolderAsync);
+            ((AsyncCommand)ChooseLocalFolderCommand).Failed += exception => CommandFailed?.Invoke(exception);
+            NavigateLocalUpCommand = new RelayCommand(_ => NavigateLocalUp(), _ => CanNavigateLocalUp);
             DownloadOrCancelSelectedCommand = new AsyncCommand(DownloadOrCancelSelectedAsync, () => IsConnected && SelectedEntries.Count > 0);
             CancelSelectedDownloadsCommand = new RelayCommand(_ => CancelSelectedDownloads(), _ => HasSelectedActiveDownloads);
             DeleteSelectedCommand = new AsyncCommand(DeleteSelectedAsync, () => IsConnected && SelectedEntries.Count > 0);
@@ -68,6 +71,8 @@ namespace Dashcam.Remote
         public ICommand EnterCommand { get; }
         public ICommand RefreshCommand { get; }
         public ICommand SelectSdCardCommand { get; }
+        public ICommand ChooseLocalFolderCommand { get; }
+        public ICommand NavigateLocalUpCommand { get; }
         public ICommand DownloadOrCancelSelectedCommand { get; }
         public ICommand CancelSelectedDownloadsCommand { get; }
         public ICommand DeleteSelectedCommand { get; }
@@ -77,13 +82,15 @@ namespace Dashcam.Remote
         public ICommand PreviousThumbnailCommand { get; }
         public ICommand NextThumbnailCommand { get; }
         public Func<Task<string?>>? ChooseDownloadDirectoryRequested { get; set; }
+        public Func<Task<string?>>? ChooseLocalFolderRequested { get; set; }
         public Func<string, string, Task<bool>>? ConfirmRequested { get; set; }
         public Action<IReadOnlyList<Uri>>? PlayVideosRequested { get; set; }
         public Action<IReadOnlyList<PreviewImageItem>>? PreviewImagesRequested { get; set; }
         public Action<Exception>? CommandFailed { get; set; }
         public Action<string>? Log { get; set; }
+        public Action? OperationCompleted { get; set; }
         public Action<ExplorerFileItem>? SelectionRequested { get; set; }
-        public IEnumerable<ICommand> AsyncCommands => [EnterCommand, RefreshCommand, DownloadOrCancelSelectedCommand, DeleteSelectedCommand, PlaySelectedCommand];
+        public IEnumerable<ICommand> AsyncCommands => [EnterCommand, RefreshCommand, ChooseLocalFolderCommand, DownloadOrCancelSelectedCommand, DeleteSelectedCommand, PlaySelectedCommand];
 
         public bool IsConnected
         {
@@ -108,14 +115,32 @@ namespace Dashcam.Remote
                     _loadedManifestHost = null;
                     Files.Clear();
                     SelectedEntries.Clear();
-                    RebuildFolderCounts();
+                    FileFolders.Clear();
                     IsFilesLoading = false;
                     IsThumbnailLoading = false;
-                    SelectedFileDetails = "Connect to view files.";
-                    FileCountText = "No files";
+                    if (_localRootDirectory is not null)
+                    {
+                        LoadLocalDirectory(_selectedLocalDirectory ?? _localRootDirectory);
+                    }
+                    else
+                    {
+                        SelectedFolder = "Choose a local folder";
+                        SelectedFileDetails = "Choose a local folder to browse files.";
+                        FileCountText = "No local folder selected";
+                    }
                     OnPropertyChanged(nameof(SdCardSummary));
                     UpdateSelection();
                 }
+                else
+                {
+                    SetDeviceFolders();
+                    SelectedFolder = "SDCard";
+                }
+                OnPropertyChanged(nameof(IsOfflineMode));
+                OnPropertyChanged(nameof(LocalFolderButtonText));
+                OnPropertyChanged(nameof(CanNavigateLocalUp));
+                OnPropertyChanged(nameof(CanDownloadSelected));
+                ((RelayCommand)NavigateLocalUpCommand).RaiseCanExecuteChanged();
                 RaiseCommandStates();
             }
         }
@@ -150,8 +175,13 @@ namespace Dashcam.Remote
             }
         }
         public string SdCardSummary => $"{_manifestFiles.Count.ToString("N0", CultureInfo.CurrentCulture)} files";
-        public bool IsSdCardSelected => string.Equals(SelectedFolder, "SDCard", StringComparison.OrdinalIgnoreCase);
-        public string SelectedFolderTitle => IsSdCardSelected ? "All files" : SelectedFolder;
+        public bool IsOfflineMode => !IsConnected;
+        public string LocalFolderButtonText => _localRootDirectory is null ? "Choose local folder" : $"Local: {Path.GetFileName(_localRootDirectory)}";
+        public bool CanNavigateLocalUp => !IsConnected && _localRootDirectory is not null && _selectedLocalDirectory is not null && !string.Equals(_selectedLocalDirectory, _localRootDirectory, StringComparison.OrdinalIgnoreCase);
+        public bool IsSdCardSelected => IsConnected && string.Equals(SelectedFolder, "SDCard", StringComparison.OrdinalIgnoreCase);
+        public string SelectedFolderTitle => IsConnected
+            ? IsSdCardSelected ? "All files" : SelectedFolder
+            : _selectedLocalDirectory is null ? "Choose a local folder" : _selectedLocalDirectory;
         public string SdCardIconPath => "/Assets/Icons/sd_card.svg";
         public string SelectedFolder
         {
@@ -172,14 +202,29 @@ namespace Dashcam.Remote
                 }
 
                 RebuildEntries();
+                OnPropertyChanged(nameof(SelectedFolderTitle));
             }
         }
         public StorageFolderItem? SelectedFolderItem
         {
             get => FileFolders.FirstOrDefault(folder => string.Equals(folder.Name, SelectedFolder, StringComparison.OrdinalIgnoreCase));
-            set => SelectedFolder = value?.Name ?? "SDCard";
+            set
+            {
+                if (!IsConnected)
+                {
+                    if (value is not null)
+                    {
+                        LoadLocalDirectory(value.Name);
+                    }
+
+                    return;
+                }
+
+                SelectedFolder = value?.Name ?? "SDCard";
+            }
         }
         public bool HasSelection => SelectedEntries.Count > 0;
+        public bool CanDownloadSelected => IsConnected && HasSelection;
         public bool CanPreviewOrPlay => SelectedEntries.Count == 1;
         public bool HasSelectedActiveDownloads => SelectedEntries.SelectMany(entry => entry.Files).Any(IsFileDownloading);
         public string PlayButtonLabel => SelectedEntries.Count == 1 && SelectedEntries[0].IsPhoto ? "Preview" : "Play";
@@ -258,6 +303,96 @@ namespace Dashcam.Remote
             }
 
             await RefreshFromDeviceAsync();
+        }
+
+        private async Task ChooseLocalFolderAsync()
+        {
+            if (ChooseLocalFolderRequested is null)
+            {
+                throw new InvalidOperationException("Folder picker is unavailable.");
+            }
+
+            var path = await ChooseLocalFolderRequested();
+            if (!string.IsNullOrWhiteSpace(path))
+            {
+                LoadLocalFolder(path);
+            }
+        }
+
+        private void NavigateLocalUp()
+        {
+            if (_selectedLocalDirectory is null || !CanNavigateLocalUp)
+            {
+                return;
+            }
+
+            var parent = Directory.GetParent(_selectedLocalDirectory);
+            if (parent is not null && IsWithinLocalRoot(parent.FullName))
+            {
+                LoadLocalDirectory(parent.FullName);
+            }
+        }
+
+        private void LoadLocalFolder(string path)
+        {
+            var root = Path.GetFullPath(path);
+            if (!Directory.Exists(root))
+            {
+                throw new DirectoryNotFoundException($"Folder '{root}' does not exist.");
+            }
+
+            _localRootDirectory = root;
+            _selectedLocalDirectory = root;
+            LoadLocalDirectory(root);
+            OnPropertyChanged(nameof(LocalFolderButtonText));
+            OnPropertyChanged(nameof(CanNavigateLocalUp));
+            ((RelayCommand)NavigateLocalUpCommand).RaiseCanExecuteChanged();
+        }
+
+        private bool IsWithinLocalRoot(string path)
+        {
+            if (_localRootDirectory is null)
+            {
+                return false;
+            }
+
+            var relativePath = Path.GetRelativePath(_localRootDirectory, path);
+            return !Path.IsPathRooted(relativePath) && relativePath != ".." && !relativePath.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
+        }
+
+        private void LoadLocalDirectory(string path)
+        {
+            _selectedLocalDirectory = Path.GetFullPath(path);
+            _localFiles.Clear();
+            foreach (var filePath in Directory.EnumerateFiles(_selectedLocalDirectory))
+            {
+                var file = new FileInfo(filePath);
+                _localFiles.Add(new DeviceFile("Local", file.FullName, file.Length, -1, file.LastWriteTime.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture)));
+            }
+
+            FileFolders.Clear();
+            foreach (var directoryPath in Directory.EnumerateDirectories(_selectedLocalDirectory).OrderBy(Path.GetFileName, StringComparer.CurrentCultureIgnoreCase))
+            {
+                var folder = new StorageFolderItem(directoryPath, _ => Task.CompletedTask, _ => { }, _ => false, _ => false);
+                try
+                {
+                    folder.FileCount = Directory.EnumerateFiles(directoryPath).Count();
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    folder.FileCount = 0;
+                }
+
+                FileFolders.Add(folder);
+            }
+
+            SelectedFolder = _selectedLocalDirectory;
+            FileCountText = $"{_localFiles.Count.ToString("N0", CultureInfo.CurrentCulture)} files · local folder";
+            SelectedFileDetails = "Select a file.";
+            OnPropertyChanged(nameof(SelectedFolderTitle));
+            OnPropertyChanged(nameof(CanNavigateLocalUp));
+            OnPropertyChanged(nameof(SdCardSummary));
+            ((RelayCommand)NavigateLocalUpCommand).RaiseCanExecuteChanged();
         }
 
         private async Task RefreshFromDeviceAsync()
@@ -366,6 +501,12 @@ namespace Dashcam.Remote
 
         private async Task SaveManifestAsync(CancellationToken cancellationToken = default)
         {
+            await SaveManifestAsync(_manifestFiles.ToList(), cancellationToken);
+        }
+
+        private async Task SaveManifestAsync(List<DeviceFile> manifestFiles, CancellationToken cancellationToken = default)
+        {
+            await _manifestSaveGate.WaitAsync(cancellationToken);
             try
             {
                 var path = GetManifestPath(_api.Host);
@@ -373,7 +514,7 @@ namespace Dashcam.Remote
                 var temporaryPath = $"{path}.tmp";
                 await using (var output = File.Create(temporaryPath))
                 {
-                    await JsonSerializer.SerializeAsync(output, new FileManifest(_api.Host, DateTimeOffset.Now, _manifestFiles), cancellationToken: cancellationToken);
+                    await JsonSerializer.SerializeAsync(output, new FileManifest(_api.Host, DateTimeOffset.Now, manifestFiles), cancellationToken: cancellationToken);
                 }
 
                 File.Move(temporaryPath, path, true);
@@ -384,6 +525,10 @@ namespace Dashcam.Remote
                 {
                     Log?.Invoke($"Could not save the temporary SD manifest: {exception.Message}");
                 }
+            }
+            finally
+            {
+                _manifestSaveGate.Release();
             }
         }
 
@@ -413,9 +558,9 @@ namespace Dashcam.Remote
 
         private void RebuildEntries()
         {
-            var rawFiles = IsSdCardSelected
-                ? _manifestFiles
-                : _filesByFolder.GetValueOrDefault(SelectedFolder) ?? [];
+            IReadOnlyList<DeviceFile> rawFiles = !IsConnected
+                ? _localFiles
+                : IsSdCardSelected ? _manifestFiles : _filesByFolder.GetValueOrDefault(SelectedFolder) ?? [];
             var next = IsFrontBackView ? BuildGroupedEntries(rawFiles) : rawFiles.Select(CreateEntry).ToList();
             Files.Clear();
             foreach (var entry in next.OrderByDescending(entry => entry.SortDate, StringComparer.Ordinal))
@@ -424,7 +569,7 @@ namespace Dashcam.Remote
             }
 
             SetSelectedEntries([]);
-            FileCountText = IsFilesLoading ? "Loading SD card…" : $"{Files.Count.ToString("N0", CultureInfo.CurrentCulture)} items";
+            FileCountText = IsFilesLoading ? "Loading SD card…" : IsConnected ? $"{Files.Count.ToString("N0", CultureInfo.CurrentCulture)} items" : $"{Files.Count.ToString("N0", CultureInfo.CurrentCulture)} files · local folder";
             foreach (var entry in Files)
             {
                 entry.RefreshDownloadState();
@@ -489,10 +634,12 @@ namespace Dashcam.Remote
 
         private ExplorerFileItem CreateEntry(IReadOnlyList<DeviceFile> files, bool grouped = false, string? name = null)
         {
-            var item = new ExplorerFileItem(files, grouped, name ?? Path.GetFileName(files[0].Name), ContextDownloadAsync, ContextDeleteAsync, ContextPreviewAsync, CancelContextDownloads, CanCancelContextDownloads, RefreshEntryDownloadState);
+            var item = new ExplorerFileItem(files, grouped, name ?? Path.GetFileName(files[0].Name), ContextDownloadAsync, CanDownloadContextEntry, ContextDeleteAsync, ContextPreviewAsync, CancelContextDownloads, CanCancelContextDownloads, RefreshEntryDownloadState);
             ((AsyncCommand)item.DownloadCommand).Failed += exception => CommandFailed?.Invoke(exception);
             ((AsyncCommand)item.DeleteCommand).Failed += exception => CommandFailed?.Invoke(exception);
+            ((AsyncCommand)item.DeleteCommand).Finished += () => OperationCompleted?.Invoke();
             ((AsyncCommand)item.PreviewCommand).Failed += exception => CommandFailed?.Invoke(exception);
+            ((AsyncCommand)item.PreviewCommand).Finished += () => OperationCompleted?.Invoke();
             return item;
         }
 
@@ -514,6 +661,7 @@ namespace Dashcam.Remote
                 ThumbnailStatusText = SelectedEntries.Count == 0 ? "Select a file to preview." : "Preview is available for one selected item.";
             }
             OnPropertyChanged(nameof(HasSelection));
+            OnPropertyChanged(nameof(CanDownloadSelected));
             OnPropertyChanged(nameof(CanPreviewOrPlay));
             OnPropertyChanged(nameof(PlayButtonLabel));
             OnPropertyChanged(nameof(Thumbnail));
@@ -734,7 +882,7 @@ namespace Dashcam.Remote
                 entry.RefreshDownloadState();
                 return;
             }
-            entry.SetDownloadState(preparing, progress, status);
+            entry.SetDownloadState(preparing, progress, status, !string.IsNullOrWhiteSpace(status));
         }
 
         private Task SearchManifest()
@@ -745,7 +893,7 @@ namespace Dashcam.Remote
                 return Task.CompletedTask;
             }
 
-            var currentFiles = IsSdCardSelected ? _manifestFiles : _filesByFolder.GetValueOrDefault(SelectedFolder) ?? [];
+            IReadOnlyList<DeviceFile> currentFiles = !IsConnected ? _localFiles : IsSdCardSelected ? _manifestFiles : _filesByFolder.GetValueOrDefault(SelectedFolder) ?? [];
             var matchingFile = currentFiles.FirstOrDefault(file => Path.GetFileName(file.Name).Contains(query, StringComparison.OrdinalIgnoreCase));
             if (matchingFile is null)
             {
@@ -785,6 +933,8 @@ namespace Dashcam.Remote
         private bool CanCancelContextDownloads(ExplorerFileItem clicked) =>
             GetContextSelection(clicked).SelectMany(entry => entry.Files).Any(IsFileDownloading);
 
+        private bool CanDownloadContextEntry(ExplorerFileItem _) => IsConnected;
+
         private async Task EnqueueEntriesAsync(IEnumerable<ExplorerFileItem> entries)
         {
             var files = entries.SelectMany(entry => entry.Files).DistinctBy(GetFileKey).Where(file => !IsFileDownloading(file)).ToArray();
@@ -812,6 +962,7 @@ namespace Dashcam.Remote
                 var task = new DownloadQueueItem(file);
                 DownloadQueue.Add(task);
                 _activeDownloads[GetFileKey(file)] = task;
+                _downloadHistory[GetFileKey(file)] = task;
                 _ = RunDownloadAsync(task);
             }
             RefreshAllDownloadVisuals();
@@ -866,6 +1017,9 @@ namespace Dashcam.Remote
         private bool FolderHasActiveDownloads(string folderName) => _activeDownloads.Values.Any(task =>
             string.Equals(task.File.Folder, folderName, StringComparison.OrdinalIgnoreCase));
 
+        private bool CanDownloadFolder(string folderName) => IsConnected &&
+            _filesByFolder.TryGetValue(folderName, out var files) && files.Count > 0;
+
         private async Task RunDownloadAsync(DownloadQueueItem task)
         {
             var slotTaken = false;
@@ -877,6 +1031,7 @@ namespace Dashcam.Remote
                 slotTaken = true;
                 if (task.Cancellation.IsCancellationRequested)
                 {
+                    task.State = DownloadState.Cancelled;
                     return;
                 }
 
@@ -901,7 +1056,31 @@ namespace Dashcam.Remote
                     }, task.Cancellation.Token);
                 }
                 File.Move(partialPath, outputPath, true);
+                var actualSize = new FileInfo(outputPath).Length;
+                var manifestSnapshot = await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    var fileIndex = _manifestFiles.FindIndex(file => string.Equals(GetFileKey(file), GetFileKey(task.File), StringComparison.OrdinalIgnoreCase));
+                    if (fileIndex < 0)
+                    {
+                        return null;
+                    }
+
+                    var selectedFileKeys = SelectedEntries
+                        .SelectMany(entry => entry.Files)
+                        .Select(GetFileKey)
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                    _manifestFiles[fileIndex] = _manifestFiles[fileIndex] with { Size = actualSize };
+                    RebuildFolderCounts();
+                    RebuildEntries();
+                    SetSelectedEntries(Files.Where(entry => entry.Files.Any(file => selectedFileKeys.Contains(GetFileKey(file)))));
+                    return _manifestFiles.ToList();
+                });
+                if (manifestSnapshot is not null)
+                {
+                    await SaveManifestAsync(manifestSnapshot);
+                }
                 task.State = DownloadState.Completed;
+                Log?.Invoke($"Download complete: {Path.GetFileName(task.File.Name)}");
             }
             catch (OperationCanceledException) when (task.Cancellation.IsCancellationRequested)
             {
@@ -933,6 +1112,10 @@ namespace Dashcam.Remote
                     _activeDownloads.Remove(GetFileKey(task.File));
                     RefreshAllDownloadVisuals();
                     OnPropertyChanged(nameof(HasSelectedActiveDownloads));
+                    if (task.State is DownloadState.Completed or DownloadState.Failed or DownloadState.Cancelled)
+                    {
+                        OperationCompleted?.Invoke();
+                    }
                 });
                 task.Cancellation.Dispose();
             }
@@ -942,6 +1125,11 @@ namespace Dashcam.Remote
 
         private async Task DeleteEntriesAsync(IEnumerable<ExplorerFileItem> entries)
         {
+            if (!IsConnected)
+            {
+                return;
+            }
+
             var targetEntries = entries.Distinct().ToArray();
             var files = targetEntries.SelectMany(entry => entry.Files).DistinctBy(GetFileKey).ToArray();
             if (files.Length == 0)
@@ -973,14 +1161,74 @@ namespace Dashcam.Remote
 
         private void RefreshEntryDownloadState(ExplorerFileItem entry)
         {
-            var tasks = entry.Files.Select(file => _activeDownloads.GetValueOrDefault(GetFileKey(file))).Where(task => task is not null).ToArray();
-            var active = tasks.Length > 0;
-            var total = tasks.Sum(task => task!.TotalBytes.GetValueOrDefault());
-            var transferred = tasks.Sum(task => task!.BytesTransferred);
+            if (!IsConnected)
+            {
+                entry.SetDownloadState(false, 0, string.Empty, showStatus: false);
+                return;
+            }
+
+            var tasks = entry.Files.Select(file => _downloadHistory.GetValueOrDefault(GetFileKey(file))).ToArray();
+            var activeTasks = tasks.Where(task => task?.State is DownloadState.Queued or DownloadState.Downloading).ToArray();
+            var total = activeTasks.Sum(task => task!.TotalBytes.GetValueOrDefault());
+            var transferred = activeTasks.Sum(task => task!.BytesTransferred);
             var percent = total > 0 ? transferred * 100d / total : 0d;
-            var queued = tasks.Any(task => task!.State == DownloadState.Queued);
-            var progressText = total > 0 ? $"{percent:0}%" : "Downloading";
-            entry.SetDownloadState(active, percent, active ? queued ? "Queued" : progressText : string.Empty);
+            var status = GetDownloadStatus(tasks, percent, total);
+            entry.SetDownloadState(activeTasks.Length > 0, percent, status);
+        }
+
+        private static string GetDownloadStatus(DownloadQueueItem?[] tasks, double percent, long totalBytes)
+        {
+            if (tasks.Length == 1)
+            {
+                return tasks[0]?.State switch
+                {
+                    DownloadState.Queued => "Queued",
+                    DownloadState.Downloading => totalBytes > 0 ? $"Downloading {percent:0}%" : "Downloading",
+                    DownloadState.Completed => "Downloaded",
+                    DownloadState.Cancelled => "Cancelled",
+                    DownloadState.Failed => "Failed",
+                    _ => "Ready to download"
+                };
+            }
+
+            var queued = tasks.Count(task => task?.State == DownloadState.Queued);
+            var downloading = tasks.Count(task => task?.State == DownloadState.Downloading);
+            var completed = tasks.Count(task => task?.State == DownloadState.Completed);
+            var failed = tasks.Count(task => task?.State == DownloadState.Failed);
+            var cancelled = tasks.Count(task => task?.State == DownloadState.Cancelled);
+            var ready = tasks.Length - queued - downloading - completed - failed - cancelled;
+            var parts = new List<string>();
+            if (downloading > 0)
+            {
+                parts.Add(totalBytes > 0 ? $"{downloading} downloading · {percent:0}%" : $"{downloading} downloading");
+            }
+
+            if (queued > 0)
+            {
+                parts.Add($"{queued} queued");
+            }
+
+            if (completed > 0)
+            {
+                parts.Add($"{completed} downloaded");
+            }
+
+            if (failed > 0)
+            {
+                parts.Add($"{failed} failed");
+            }
+
+            if (cancelled > 0)
+            {
+                parts.Add($"{cancelled} cancelled");
+            }
+
+            if (ready > 0)
+            {
+                parts.Add($"{ready} ready");
+            }
+
+            return parts.Count == 0 ? "Ready to download" : string.Join(" · ", parts);
         }
 
         private void RefreshAllDownloadVisuals()
@@ -1026,6 +1274,18 @@ namespace Dashcam.Remote
             {
                 ((AsyncCommand)folder.DownloadAllCommand).RaiseCanExecuteChanged();
                 ((RelayCommand)folder.CancelDownloadsCommand).RaiseCanExecuteChanged();
+            }
+        }
+
+        private void SetDeviceFolders()
+        {
+            FileFolders.Clear();
+            foreach (var name in new[] { "loop", "emr", "event", "park" })
+            {
+                var folder = new StorageFolderItem(name, DownloadFolderAsync, CancelFolderDownloads, FolderHasActiveDownloads, CanDownloadFolder);
+                ((AsyncCommand)folder.DownloadAllCommand).Failed += exception => CommandFailed?.Invoke(exception);
+                folder.FileCount = _filesByFolder.GetValueOrDefault(name)?.Count ?? 0;
+                FileFolders.Add(folder);
             }
         }
 
