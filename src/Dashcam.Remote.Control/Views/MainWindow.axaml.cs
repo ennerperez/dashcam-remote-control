@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
@@ -25,11 +26,13 @@ namespace Dashcam.Remote
             InitializeComponent();
             DataContext = _viewModel;
             _viewModel.FileExplorer.ChooseDownloadDirectoryRequested = ChooseDownloadDirectoryAsync;
+            _viewModel.FileExplorer.ChooseLocalFolderRequested = ChooseLocalFolderAsync;
             _viewModel.FileExplorer.ConfirmRequested = ConfirmAsync;
             _viewModel.FileExplorer.PlayVideosRequested = OpenFilePlayer;
             _viewModel.FileExplorer.PreviewImagesRequested = OpenImagePreview;
             _viewModel.FileExplorer.CommandFailed = _viewModel.HandleCommandFailure;
             _viewModel.FileExplorer.Log = Log;
+            _viewModel.FileExplorer.OperationCompleted = FlashTaskbarIcon;
             var filesList = FilesList ?? throw new InvalidOperationException("File list control is unavailable.");
             _viewModel.FileExplorer.SelectionRequested = entry =>
             {
@@ -47,6 +50,10 @@ namespace Dashcam.Remote
             foreach (var command in _viewModel.FileExplorer.AsyncCommands)
             {
                 ((AsyncCommand)command).Failed += _viewModel.HandleCommandFailure;
+                if (!ReferenceEquals(command, _viewModel.FileExplorer.DownloadOrCancelSelectedCommand))
+                {
+                    ((AsyncCommand)command).Finished += FlashTaskbarIcon;
+                }
             }
 
             _viewModel.CopyRequested = value => CopyToClipboardAsync("Device data", value);
@@ -68,13 +75,54 @@ namespace Dashcam.Remote
                 }
             };
             ((AsyncCommand)_viewModel.ConnectCommand!).Failed += _viewModel.HandleCommandFailure;
+            ((AsyncCommand)_viewModel.ConnectCommand!).Finished += FlashTaskbarIcon;
             ((AsyncCommand)_viewModel.RefreshCommand).Failed += _viewModel.HandleCommandFailure;
+            ((AsyncCommand)_viewModel.RefreshCommand).Finished += FlashTaskbarIcon;
             ((AsyncParameterCommand)_viewModel.DeviceActionCommand).Failed += _viewModel.HandleCommandFailure;
+            ((AsyncParameterCommand)_viewModel.DeviceActionCommand).Finished += FlashTaskbarIcon;
             ((AsyncParameterCommand)_viewModel.CopyValueCommand).Failed += _viewModel.HandleCommandFailure;
+            ((AsyncParameterCommand)_viewModel.CopyValueCommand).Finished += FlashTaskbarIcon;
             foreach (var command in new[] { _viewModel.LoadFilesCommand, _viewModel.LoadThumbnailCommand, _viewModel.DownloadFileCommand, _viewModel.DeleteFileCommand, _viewModel.PlayFileCommand, _viewModel.LoadSettingsCommand, _viewModel.SetTimezoneCommand, _viewModel.SetWifiCommand, _viewModel.FormatSdCommand, _viewModel.FactoryResetCommand, _viewModel.RawRequestCommand, _viewModel.ToggleRecordingCommand, _viewModel.StartRecordingCommand, _viewModel.StopRecordingCommand, _viewModel.StartLiveCommand, _viewModel.StopLiveCommand })
             {
                 ((AsyncCommand)command).Failed += _viewModel.HandleCommandFailure;
+                ((AsyncCommand)command).Finished += FlashTaskbarIcon;
             }
+
+            foreach (var action in _viewModel.CameraActions)
+            {
+                ((AsyncCommand)action.Command).Finished += FlashTaskbarIcon;
+            }
+
+            _viewModel.CameraActions.CollectionChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.NewItems is null)
+                {
+                    return;
+                }
+
+                foreach (CameraSwitchItem action in eventArgs.NewItems)
+                {
+                    ((AsyncCommand)action.Command).Finished += FlashTaskbarIcon;
+                }
+            };
+
+            foreach (var setting in _viewModel.Settings)
+            {
+                setting.Finished += FlashTaskbarIcon;
+            }
+
+            _viewModel.Settings.CollectionChanged += (_, eventArgs) =>
+            {
+                if (eventArgs.NewItems is null)
+                {
+                    return;
+                }
+
+                foreach (DeviceSettingItem setting in eventArgs.NewItems)
+                {
+                    setting.Finished += FlashTaskbarIcon;
+                }
+            };
 
             MainTabs.SelectionChanged += (_, _) => UpdateNavigationHighlight(MainTabs.SelectedIndex);
             LogBox.TextChanged += (_, _) => LogBox.CaretIndex = LogBox.Text?.Length ?? 0;
@@ -124,6 +172,48 @@ namespace Dashcam.Remote
             ConnectButton.Classes.Add(_viewModel.IsConnecting ? "cancel" : _viewModel.IsConnected ? "close" : "connect");
         }
 
+        private void FlashTaskbarIcon()
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (!OperatingSystem.IsWindows() || IsActive)
+                {
+                    return;
+                }
+
+                var windowHandle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+                if (windowHandle == IntPtr.Zero)
+                {
+                    return;
+                }
+
+                var flashInfo = new FlashWindowInfo
+                {
+                    Size = (uint)Marshal.SizeOf<FlashWindowInfo>(),
+                    WindowHandle = windowHandle,
+                    Flags = FlashWindowTray,
+                    Count = 3
+                };
+                FlashWindowEx(ref flashInfo);
+            });
+        }
+
+        private const uint FlashWindowTray = 0x00000002;
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct FlashWindowInfo
+        {
+            public uint Size;
+            public IntPtr WindowHandle;
+            public uint Flags;
+            public uint Count;
+            public uint Timeout;
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool FlashWindowEx(ref FlashWindowInfo flashInfo);
+
         private async Task<Stream?> ChooseSaveFileStreamAsync(DeviceFile file)
         {
             var storageProvider = TopLevel.GetTopLevel(this)?.StorageProvider ?? throw new InvalidOperationException("File picker is unavailable.");
@@ -144,6 +234,13 @@ namespace Dashcam.Remote
         {
             var storage = TopLevel.GetTopLevel(this)?.StorageProvider ?? throw new InvalidOperationException("Folder picker is unavailable.");
             var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Choose download folder", AllowMultiple = false });
+            return folders.FirstOrDefault()?.TryGetLocalPath();
+        }
+
+        private async Task<string?> ChooseLocalFolderAsync()
+        {
+            var storage = TopLevel.GetTopLevel(this)?.StorageProvider ?? throw new InvalidOperationException("Folder picker is unavailable.");
+            var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Choose local folder to browse", AllowMultiple = false });
             return folders.FirstOrDefault()?.TryGetLocalPath();
         }
 
