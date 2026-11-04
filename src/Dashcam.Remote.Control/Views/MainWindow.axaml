@@ -1,0 +1,403 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svg="clr-namespace:Avalonia.Svg;assembly=Svg.Controls.Avalonia"
+        xmlns:vm="using:Dashcam.Remote"
+        xmlns:remote="clr-namespace:Dashcam.Remote"
+        x:Class="Dashcam.Remote.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/Icons/dashcam-remote-control.ico"
+        Title="Dashcam Remote Control"
+        Width="1260" Height="880" MinWidth="980" MinHeight="700"
+        Background="#061632">
+  <Window.Resources>
+    <LinearGradientBrush x:Key="PanelBrush" StartPoint="50%,0%" EndPoint="50%,100%">
+      <GradientStop Color="#0C2B68" Offset="0" />
+      <GradientStop Color="#111F60" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="TileBrush" StartPoint="50%,0%" EndPoint="50%,100%">
+      <GradientStop Color="#087DFF" Offset="0" />
+      <GradientStop Color="#2547F5" Offset="0.58" />
+      <GradientStop Color="#4827CF" Offset="1" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="SelectedTileBrush" StartPoint="50%,0%" EndPoint="50%,100%">
+      <GradientStop Color="#28A2FF" Offset="0" />
+      <GradientStop Color="#2163FF" Offset="0.55" />
+      <GradientStop Color="#5536E8" Offset="1" />
+    </LinearGradientBrush>
+  </Window.Resources>
+  <Window.Styles>
+    <Style Selector="TabControl">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="TabItem">
+      <Setter Property="Background" Value="{StaticResource TileBrush}" />
+      <Setter Property="Foreground" Value="#DCEBFF" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="MinWidth" Value="145" />
+      <Setter Property="Height" Value="104" />
+      <Setter Property="Margin" Value="1,2,1,4" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="BorderBrush" Value="#528DFF" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+    <Style Selector="TabItem:pointerover">
+      <Setter Property="Background" Value="#176DF5" />
+    </Style>
+    <Style Selector="TabItem:selected">
+      <Setter Property="Background" Value="{StaticResource SelectedTileBrush}" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="BorderBrush" Value="#A3D5FF" />
+    </Style>
+    <Style Selector="TabItem.hidden-header">
+      <Setter Property="Height" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Margin" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Opacity" Value="0" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+    <Style Selector="Button">
+      <Setter Property="Background" Value="#164AC7" />
+      <Setter Property="Foreground" Value="White" />
+      <Setter Property="BorderBrush" Value="#4F7EFF" />
+      <Setter Property="Padding" Value="14,9" />
+      <Setter Property="CornerRadius" Value="4" />
+    </Style>
+    <Style Selector="Button:pointerover">
+      <Setter Property="Background" Value="#2475FF" />
+    </Style>
+    <Style Selector="Button:pressed">
+      <Setter Property="Background" Value="#293ACC" />
+    </Style>
+    <Style Selector="Button.navTile">
+      <Setter Property="Background" Value="{StaticResource TileBrush}" />
+      <Setter Property="Foreground" Value="#F4F8FF" />
+      <Setter Property="BorderBrush" Value="#528DFF" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="Padding" Value="5,4" />
+      <Setter Property="Width" Value="78" />
+      <Setter Property="Height" Value="68" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="Button.navTile:pointerover">
+      <Setter Property="Background" Value="#176DF5" />
+    </Style>
+    <Style Selector="Button.navTile.active">
+      <Setter Property="Background" Value="{StaticResource SelectedTileBrush}" />
+      <Setter Property="BorderBrush" Value="#C5E8FF" />
+    </Style>
+    <Style Selector="Button.navTile:disabled">
+      <Setter Property="Background" Value="#10264D" />
+      <Setter Property="Foreground" Value="#7187AD" />
+      <Setter Property="BorderBrush" Value="#263B61" />
+    </Style>
+    <Style Selector="Button.connectionAction.connect">
+      <Setter Property="Background" Value="#176DF5" />
+      <Setter Property="BorderBrush" Value="#70AEFF" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.connectionAction.cancel, Button.connectionAction.close">
+      <Setter Property="Background" Value="#C52D42" />
+      <Setter Property="BorderBrush" Value="#FF8190" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="Button.connectionAction.cancel:pointerover, Button.connectionAction.close:pointerover">
+      <Setter Property="Background" Value="#E13E53" />
+    </Style>
+    <Style Selector="Button.connectionAction.cancel:pressed, Button.connectionAction.close:pressed">
+      <Setter Property="Background" Value="#A51D32" />
+    </Style>
+    <Style Selector="Button.copyCard">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="MinHeight" Value="82" />
+    </Style>
+    <Style Selector="Button.copyCard:pointerover">
+      <Setter Property="Opacity" Value="0.86" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="#0A1E45" />
+      <Setter Property="Foreground" Value="#F2F7FF" />
+      <Setter Property="BorderBrush" Value="#355BA4" />
+    </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="Background" Value="#0A1E45" />
+      <Setter Property="Foreground" Value="#F2F7FF" />
+    </Style>
+  </Window.Styles>
+  <Grid RowDefinitions="Auto,*,Auto" Margin="8" RowSpacing="16">
+    <Border Grid.Row="0" Background="{StaticResource PanelBrush}" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="6" Padding="12">
+      <Grid ColumnDefinitions="210,*,245" ColumnSpacing="14" VerticalAlignment="Center">
+        <StackPanel Spacing="4" VerticalAlignment="Center">
+          <TextBlock Text="Dashcam Remote" FontSize="23" FontWeight="Bold" Foreground="#F5F8FF" />
+          <TextBlock Text="Dashcam controls over Wi-Fi" Foreground="#A9C9FF" />
+          <TextBlock Text="{Binding AppVersion}" Foreground="#7896C1" FontSize="11" />
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="4">
+          <Button x:Name="DashcamNavButton" Classes="navTile active" IsEnabled="{Binding IsNavigationEnabled}" Command="{Binding NavigateCommand}" CommandParameter="0"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3"><svg:Svg Path="/Assets/Icons/camera.svg" Width="22" Height="22" Stretch="Uniform"/><TextBlock Text="Camera" FontSize="10" HorizontalAlignment="Center"/></StackPanel></Button>
+          <Button x:Name="LiveNavButton" Classes="navTile" IsEnabled="{Binding IsNavigationEnabled}" Command="{Binding NavigateCommand}" CommandParameter="1"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3"><svg:Svg Path="/Assets/Icons/videocam.svg" Width="22" Height="22" Stretch="Uniform"/><TextBlock Text="Live View" FontSize="10" HorizontalAlignment="Center"/></StackPanel></Button>
+          <Button x:Name="SettingsNavButton" Classes="navTile" IsEnabled="{Binding IsNavigationEnabled}" Command="{Binding NavigateCommand}" CommandParameter="2"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3"><svg:Svg Path="/Assets/Icons/settings.svg" Width="22" Height="22" Stretch="Uniform"/><TextBlock Text="Setting" FontSize="10" HorizontalAlignment="Center"/></StackPanel></Button>
+          <Button x:Name="FilesNavButton" Classes="navTile" IsEnabled="{Binding IsFileExplorerNavigationEnabled}" Command="{Binding NavigateCommand}" CommandParameter="3"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3"><svg:Svg Path="/Assets/Icons/folder_open.svg" Width="22" Height="22" Stretch="Uniform"/><TextBlock Text="File Explorer" FontSize="9" HorizontalAlignment="Center"/></StackPanel></Button>
+          <Button x:Name="SystemNavButton" Classes="navTile" IsEnabled="{Binding IsNavigationEnabled}" Command="{Binding NavigateCommand}" CommandParameter="4"><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="3"><svg:Svg Path="/Assets/Icons/tune.svg" Width="22" Height="22" Stretch="Uniform"/><TextBlock Text="Sys Settings" FontSize="9" HorizontalAlignment="Center"/></StackPanel></Button>
+        </StackPanel>
+        <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Center">
+          <TextBlock Text="Device IP" Foreground="#A9C9FF" FontSize="12" />
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="5">
+          <TextBox x:Name="HostBox" Text="{Binding DeviceIp, Mode=TwoWay}" IsEnabled="{Binding IsHostEnabled}" PlaceholderText="192.168.169.1" Height="36" VerticalAlignment="Center" />
+          <Button x:Name="ConnectButton" Grid.Column="1" Width="36" Height="36" MinWidth="36" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="{Binding ConnectTooltip}" IsEnabled="{Binding IsConnectEnabled}" Classes="connectionAction connect" Command="{Binding ConnectCommand}"><Grid><svg:Svg x:Name="ConnectIcon" Path="/Assets/Icons/link.svg" Width="20" Height="20" Stretch="Uniform" IsVisible="{Binding ShowConnectIcon}"/><svg:Svg x:Name="CancelConnectIcon" Path="/Assets/Icons/cancel.svg" Width="20" Height="20" Stretch="Uniform" IsVisible="{Binding ShowCancelIcon}"/><svg:Svg x:Name="DisconnectIcon" Path="/Assets/Icons/link_off.svg" Width="20" Height="20" Stretch="Uniform" IsVisible="{Binding ShowDisconnectIcon}"/></Grid></Button>
+          </Grid>
+          <TextBlock x:Name="ConnectionLabel" Text="{Binding ConnectionStatus}" Foreground="#FFD66E" FontSize="12" />
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <TabControl x:Name="MainTabs" Grid.Row="1" Background="Transparent" SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}">
+      <TabItem Classes="hidden-header" IsEnabled="{Binding IsConnected}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <StackPanel Margin="0" Spacing="10" HorizontalAlignment="Stretch">
+            <Grid ColumnDefinitions="*,*,*,*,*,*,*,*,*,*,*,*" RowDefinitions="Auto,Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="8" HorizontalAlignment="Stretch">
+              <Button x:Name="ModelCard" Classes="copyCard" ToolTip.Tip="Click to copy" Command="{Binding CopyValueCommand}" CommandParameter="{Binding Model}" Grid.Row="0" Grid.Column="8" Grid.ColumnSpan="4"><Border Background="{StaticResource TileBrush}" CornerRadius="4" Padding="13"><StackPanel Spacing="7"><TextBlock Text="MODEL" Foreground="#D6E7FF" FontSize="11"/><TextBlock x:Name="ModelValue" Text="{Binding Model}" FontSize="21" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/></StackPanel></Border></Button>
+              <Button x:Name="FirmwareCard" Classes="copyCard" ToolTip.Tip="Click to copy" Command="{Binding CopyValueCommand}" CommandParameter="{Binding Firmware}" Grid.Row="1" Grid.Column="6" Grid.ColumnSpan="3"><Border Background="{StaticResource TileBrush}" CornerRadius="4" Padding="13"><StackPanel Spacing="7"><TextBlock Text="FIRMWARE" Foreground="#D6E7FF" FontSize="11"/><TextBlock x:Name="FirmwareValue" Text="{Binding Firmware}" FontSize="15" TextWrapping="Wrap" TextTrimming="CharacterEllipsis"/></StackPanel></Border></Button>
+              <Button x:Name="StorageCard" Classes="copyCard" ToolTip.Tip="Click to copy" Command="{Binding CopyValueCommand}" CommandParameter="{Binding Storage}" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="12"><Border Background="{StaticResource TileBrush}" CornerRadius="4" Padding="13"><StackPanel Spacing="7"><TextBlock Text="SD CARD" Foreground="#D6E7FF" FontSize="11"/><TextBlock x:Name="StorageValue" Text="{Binding Storage}" FontSize="17" TextTrimming="CharacterEllipsis"/><ProgressBar Minimum="0" Maximum="100" Value="{Binding StorageUsagePercent}" Foreground="{Binding StorageUsageBrush}" IsVisible="{Binding IsStorageAvailable}" Height="6"/></StackPanel></Border></Button>
+              <Button x:Name="RecordingCard" Classes="copyCard" ToolTip.Tip="Click to start or stop recording" Command="{Binding ToggleRecordingCommand}" Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4"><Border Background="{StaticResource TileBrush}" CornerRadius="4" Padding="13"><StackPanel Spacing="7"><TextBlock Text="RECORDING" Foreground="#D6E7FF" FontSize="11"/><TextBlock x:Name="RecordingValue" Text="{Binding Recording}" FontSize="17" TextTrimming="CharacterEllipsis"/></StackPanel></Border></Button>
+
+              <Button x:Name="CompanyCard" Classes="copyCard" ToolTip.Tip="Click to copy" Command="{Binding CopyValueCommand}" CommandParameter="{Binding Company}" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="4"><Border Background="{StaticResource TileBrush}" CornerRadius="4" Padding="13"><StackPanel Spacing="7"><TextBlock Text="COMPANY" Foreground="#D6E7FF" FontSize="11"/><TextBlock x:Name="CompanyValue" Text="{Binding Company}" FontSize="17" TextTrimming="CharacterEllipsis"/></StackPanel></Border></Button>
+              <Button x:Name="SocCard" Classes="copyCard" ToolTip.Tip="Click to copy" Command="{Binding CopyValueCommand}" CommandParameter="{Binding Soc}" Grid.Row="0" Grid.Column="4" Grid.ColumnSpan="4"><Border Background="{StaticResource TileBrush}" CornerRadius="4" Padding="13"><StackPanel Spacing="7"><TextBlock Text="SOC" Foreground="#D6E7FF" FontSize="11"/><TextBlock x:Name="SocValue" Text="{Binding Soc}" FontSize="17" TextTrimming="CharacterEllipsis"/></StackPanel></Border></Button>
+              <Button x:Name="CameraCountCard" Classes="copyCard" ToolTip.Tip="Click to copy" Command="{Binding CopyValueCommand}" CommandParameter="{Binding CameraCount}" Grid.Row="2" Grid.Column="4" Grid.ColumnSpan="4"><Border Background="{StaticResource TileBrush}" CornerRadius="4" Padding="13"><StackPanel Spacing="7"><TextBlock Text="CAMERAS" Foreground="#D6E7FF" FontSize="11"/><TextBlock x:Name="CameraCountValue" Text="{Binding CameraCount}" FontSize="17" TextTrimming="CharacterEllipsis"/></StackPanel></Border></Button>
+              <Button x:Name="BatteryCard" Classes="copyCard" ToolTip.Tip="Click to copy" Command="{Binding CopyValueCommand}" CommandParameter="{Binding Battery}" Grid.Row="2" Grid.Column="8" Grid.ColumnSpan="4"><Border Background="{StaticResource TileBrush}" CornerRadius="4" Padding="13"><StackPanel Spacing="7"><TextBlock Text="BATTERY" Foreground="#D6E7FF" FontSize="11"/><TextBlock x:Name="BatteryValue" Text="{Binding Battery}" FontSize="17" TextTrimming="CharacterEllipsis"/></StackPanel></Border></Button>
+
+              <Button x:Name="SsidCard" Classes="copyCard" ToolTip.Tip="Click to copy" Command="{Binding CopyValueCommand}" CommandParameter="{Binding Ssid}" Grid.Row="1" Grid.Column="9" Grid.ColumnSpan="3"><Border Background="{StaticResource TileBrush}" CornerRadius="4" Padding="13"><StackPanel Spacing="7"><TextBlock Text="SSID" Foreground="#D6E7FF" FontSize="11"/><TextBlock x:Name="SsidValue" Text="{Binding Ssid}" FontSize="15" TextTrimming="CharacterEllipsis"/></StackPanel></Border></Button>
+              <Button x:Name="DeviceIdCard" Classes="copyCard" ToolTip.Tip="Click to copy" Command="{Binding CopyValueCommand}" CommandParameter="{Binding DeviceId}" Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="3"><Border Background="{StaticResource TileBrush}" CornerRadius="4" Padding="13"><StackPanel Spacing="7"><TextBlock Text="DEVICE ID" Foreground="#D6E7FF" FontSize="11"/><TextBlock x:Name="DeviceIdValue" Text="{Binding DeviceId}" FontSize="15" TextTrimming="CharacterEllipsis"/></StackPanel></Border></Button>
+              <Button x:Name="HardwareCard" Classes="copyCard" ToolTip.Tip="Click to copy" Command="{Binding CopyValueCommand}" CommandParameter="{Binding Hardware}" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"><Border Background="{StaticResource TileBrush}" CornerRadius="4" Padding="13"><StackPanel Spacing="7"><TextBlock Text="HARDWARE" Foreground="#D6E7FF" FontSize="11"/><TextBlock x:Name="HardwareValue" Text="{Binding Hardware}" FontSize="15" TextTrimming="CharacterEllipsis"/></StackPanel></Border></Button>
+            </Grid>
+            <Grid ColumnDefinitions="*" ColumnSpacing="8" HorizontalAlignment="Stretch">
+              <Border Background="{StaticResource PanelBrush}" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="6" Padding="15" HorizontalAlignment="Stretch">
+                <StackPanel Spacing="10">
+                  <TextBlock Text="CAMERA &amp; RECORDER" FontSize="15" FontWeight="SemiBold" Foreground="#D6E7FF" />
+                  <ItemsControl ItemsSource="{Binding CameraActions}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel ItemSpacing="6" LineSpacing="6"/></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:CameraSwitchItem"><Button Content="{Binding Label}" Command="{Binding Command}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                  <WrapPanel ItemSpacing="6" LineSpacing="6">
+                    <Button x:Name="EnterRecorderButton" Width="150" Height="42" Padding="8" Command="{Binding DeviceActionCommand}" CommandParameter="enterrecorder||Recorder mode entered."><StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center"><svg:Svg Path="/Assets/Icons/video_camera_front.svg" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="Enter recorder" VerticalAlignment="Center"/></StackPanel></Button>
+                    <Button x:Name="ExitRecorderButton" Width="150" Height="42" Padding="8" Command="{Binding DeviceActionCommand}" CommandParameter="exitrecorder||Recorder mode exited."><StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center"><svg:Svg Path="/Assets/Icons/stop_circle.svg" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="Exit recorder" VerticalAlignment="Center"/></StackPanel></Button>
+                    <Button x:Name="StartRecordingButton" Width="150" Height="42" Padding="8" Command="{Binding StartRecordingCommand}"><StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center"><svg:Svg Path="/Assets/Icons/videocam.svg" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="Start recording" VerticalAlignment="Center"/></StackPanel></Button>
+                    <Button x:Name="StopRecordingButton" Width="150" Height="42" Padding="8" Command="{Binding StopRecordingCommand}"><StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center"><svg:Svg Path="/Assets/Icons/stop_circle.svg" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="Stop recording" VerticalAlignment="Center"/></StackPanel></Button>
+                    <Button x:Name="SnapshotButton" Width="150" Height="42" Padding="8" Command="{Binding DeviceActionCommand}" CommandParameter="snapshot||Snapshot requested."><StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center"><svg:Svg Path="/Assets/Icons/photo_camera.svg" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="Snapshot" VerticalAlignment="Center"/></StackPanel></Button>
+                    <Button x:Name="LockVideoButton" Width="150" Height="42" Padding="8" Command="{Binding DeviceActionCommand}" CommandParameter="lockvideo||Clip lock requested."><StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center"><svg:Svg Path="/Assets/Icons/lock.svg" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="Lock clip" VerticalAlignment="Center"/></StackPanel></Button>
+                    <Button x:Name="RefreshButton" Width="150" Height="42" Padding="8" Command="{Binding RefreshCommand}"><StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center"><svg:Svg Path="/Assets/Icons/refresh.svg" Width="18" Height="18" Stretch="Uniform"/><TextBlock Text="Refresh status" VerticalAlignment="Center"/></StackPanel></Button>
+                  </WrapPanel>
+                </StackPanel>
+              </Border>
+            </Grid>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <TabItem Classes="hidden-header" IsEnabled="{Binding IsConnected}">
+        <Grid Margin="0" RowDefinitions="Auto,*,Auto" RowSpacing="12">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Name="StartLiveButton" Content="Start" Classes="accent" Command="{Binding StartLiveCommand}" />
+            <Button x:Name="StopLiveButton" Content="Stop" Command="{Binding StopLiveCommand}" />
+            <TextBlock x:Name="LiveUrlLabel" Text="{Binding LiveUrlText}" Foreground="#9EACBC" VerticalAlignment="Center" />
+          </StackPanel>
+          <Border Grid.Row="1" Background="#080B10" CornerRadius="6" ClipToBounds="True">
+            <Grid x:Name="VideoHost">
+              <TextBlock x:Name="VideoPlaceholder" Text="Live stream is stopped" Foreground="#9EACBC" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+          <TextBlock Grid.Row="2" Text="The camera provides one RTSP session. Live preview may pause file and settings requests while active." Foreground="#9EACBC" TextWrapping="Wrap" />
+        </Grid>
+      </TabItem>
+
+      <TabItem Classes="hidden-header" IsEnabled="{Binding IsConnected}">
+        <Grid Margin="0" RowDefinitions="Auto,*" RowSpacing="12">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button x:Name="LoadSettingsButton" Width="42" Height="42" MinWidth="42" Padding="0" ToolTip.Tip="Refresh device settings" Classes="accent" Command="{Binding LoadSettingsCommand}"><svg:Svg Path="/Assets/Icons/refresh.svg" Width="20" Height="20" Stretch="Uniform"/></Button>
+            <TextBlock Text="Options come from the connected unit." Foreground="#9EACBC" VerticalAlignment="Center" />
+          </StackPanel>
+          <ScrollViewer Grid.Row="1"><ItemsControl ItemsSource="{Binding Settings}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:DeviceSettingItem"><Border Background="#19212C" CornerRadius="8" Padding="12" Margin="0,0,0,8"><Grid ColumnDefinitions="*,Auto"><TextBlock Text="{Binding Name}" VerticalAlignment="Center" FontWeight="SemiBold"/><ComboBox Grid.Column="1" ItemsSource="{Binding Labels}" SelectedIndex="{Binding SelectedIndex, Mode=TwoWay}" MinWidth="220"/></Grid></Border></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></ScrollViewer>
+        </Grid>
+      </TabItem>
+
+      <TabItem Classes="hidden-header">
+        <Grid x:Name="FileExplorerRoot" DataContext="{Binding FileExplorer}" Margin="0" ColumnDefinitions="190,*,330" ColumnSpacing="12">
+          <Border Background="{StaticResource PanelBrush}" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="6" Padding="10">
+            <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" RowSpacing="8">
+              <TextBlock Text="Locations" FontWeight="SemiBold" Foreground="#DCEBFF" Margin="6,4" />
+              <Button Grid.Row="1" Command="{Binding SelectSdCardCommand}" IsVisible="{Binding IsConnected}" Padding="8" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+                  <svg:Svg Path="{Binding SdCardIconPath}" Width="21" Height="21" Stretch="Uniform" VerticalAlignment="Center" />
+                  <TextBlock Grid.Column="1" Text="SDCard" VerticalAlignment="Center" FontWeight="SemiBold" />
+                  <TextBlock Grid.Column="2" Text="{Binding SdCardSummary}" VerticalAlignment="Center" Foreground="#9EACBC" FontSize="10" />
+                </Grid>
+              </Button>
+              <Button Grid.Row="1" Command="{Binding ChooseLocalFolderCommand}" IsVisible="{Binding IsOfflineMode}" Padding="8" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch">
+                <TextBlock Text="{Binding LocalFolderButtonText}" TextTrimming="CharacterEllipsis" />
+              </Button>
+              <Button Grid.Row="2" Command="{Binding NavigateLocalUpCommand}" IsVisible="{Binding CanNavigateLocalUp}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="8,5">
+                <TextBlock Text=".." />
+              </Button>
+              <TextBlock Grid.Row="3" Text="Folders" FontSize="11" Foreground="#9EACBC" Margin="6,8,6,0" />
+              <ListBox Grid.Row="4" ItemsSource="{Binding FileFolders}" SelectedItem="{Binding SelectedFolderItem, Mode=TwoWay}" Background="Transparent" BorderThickness="0">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:StorageFolderItem">
+                    <Border Padding="8,9" Margin="0,1" CornerRadius="4" HorizontalAlignment="Stretch" Background="Transparent">
+                      <Border.ContextMenu>
+                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                          <MenuItem Header="Download folder" Command="{Binding DownloadAllCommand}" />
+                          <MenuItem Header="Cancel folder downloads" Command="{Binding CancelDownloadsCommand}" IsVisible="{Binding HasActiveDownloads}" />
+                        </ContextMenu>
+                      </Border.ContextMenu>
+                      <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8" VerticalAlignment="Center">
+                        <svg:Svg Path="{Binding IconPath}" Width="20" Height="20" Stretch="Uniform" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="2" Text="{Binding FileCount}" VerticalAlignment="Center" Foreground="#9EACBC" FontSize="11" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+          </Border>
+
+          <Border Grid.Column="1" Background="{StaticResource PanelBrush}" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="6" Padding="12">
+            <Grid RowDefinitions="Auto,Auto,*" RowSpacing="8">
+              <Grid ColumnDefinitions="*,2*,Auto,Auto,Auto" ColumnSpacing="8">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding SelectedFolderTitle}" FontSize="17" FontWeight="SemiBold" />
+                  <TextBlock x:Name="FileCountLabel" Text="{Binding FileCountText}" Foreground="#9EACBC" FontSize="11" />
+                  <TextBlock Text="{Binding SearchStatus}" Foreground="#9EACBC" FontSize="10" />
+                </StackPanel>
+                <TextBox Grid.Column="1" Height="38" Text="{Binding SearchText, Mode=TwoWay}" PlaceholderText="Search file names…" VerticalContentAlignment="Center" KeyDown="OnFileSearchKeyDown" />
+                <Button Grid.Column="2" Command="{Binding SearchCommand}" ToolTip.Tip="Search current location" Width="38" Height="38" MinWidth="38" Padding="0"><svg:Svg Path="/Assets/Icons/search.svg" Width="19" Height="19" Stretch="Uniform" /></Button>
+                <ToggleButton Grid.Column="3" IsChecked="{Binding IsFrontBackView, Mode=TwoWay}" ToolTip.Tip="Group matching front and back camera files" Width="38" Height="38" MinWidth="38" Padding="0" VerticalAlignment="Center">
+                  <svg:Svg Path="/Assets/Icons/video_camera_front.svg" Width="20" Height="20" Stretch="Uniform" />
+                </ToggleButton>
+                <Button x:Name="LoadFilesButton" Grid.Column="4" Width="38" Height="38" MinWidth="38" Padding="0" ToolTip.Tip="Refresh SD card" Classes="accent" Command="{Binding RefreshCommand}">
+                  <svg:Svg Path="/Assets/Icons/refresh.svg" Width="20" Height="20" Stretch="Uniform" />
+                </Button>
+              </Grid>
+              <ProgressBar Grid.Row="1" Height="4" IsIndeterminate="True" IsVisible="{Binding IsFilesLoading}" />
+              <ListBox x:Name="FilesList" Grid.Row="2" ItemsSource="{Binding Files}" SelectionMode="Multiple" Background="Transparent" BorderThickness="0">
+                <ListBox.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ExplorerFileItem">
+                    <Border Padding="8,5" Margin="0,1" CornerRadius="4" HorizontalAlignment="Stretch" Background="Transparent">
+                      <Border.ContextMenu>
+                        <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                          <MenuItem Header="Download" Command="{Binding DownloadCommand}" />
+                          <MenuItem Header="Cancel download" Command="{Binding CancelDownloadCommand}" IsVisible="{Binding CanCancelDownload}" />
+                          <MenuItem Header="Delete" Command="{Binding DeleteCommand}" />
+                        </ContextMenu>
+                      </Border.ContextMenu>
+                      <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9" VerticalAlignment="Center" HorizontalAlignment="Stretch">
+                        <svg:Svg Grid.RowSpan="2" Path="{Binding IconPath}" Width="19" Height="19" Stretch="Uniform" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" />
+                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left" Margin="0">
+                          <TextBlock Text="{Binding CreatedAtText}" Foreground="#9EACBC" FontSize="10" />
+                          <TextBlock Text="{Binding CameraLabel}" Foreground="#9EACBC" FontSize="10" />
+                          <TextBlock Text="{Binding DurationText}" IsVisible="{Binding HasDuration}" Foreground="#9EACBC" FontSize="10" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="2" Grid.RowSpan="2" Text="{Binding SizeText}" Foreground="#DCEBFF" FontSize="13" VerticalAlignment="Center" />
+                        <ProgressBar Grid.Row="2" Grid.Column="1" Height="3" Maximum="100" Value="{Binding DownloadProgress}" IsVisible="{Binding IsDownloading}" />
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding DownloadStatus}" Foreground="#9EACBC" FontSize="9" HorizontalAlignment="Right" IsVisible="{Binding IsDownloadStatusVisible}" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+          </Border>
+
+          <Border Grid.Column="2" Background="{StaticResource PanelBrush}" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="6" Padding="14">
+            <Grid RowDefinitions="Auto,*,Auto" RowSpacing="10">
+              <TextBlock Text="{Binding SelectedDetailsHeader}" FontSize="17" FontWeight="SemiBold" />
+              <ScrollViewer Grid.Row="1">
+                <StackPanel Spacing="10">
+                  <Border Background="#080B10" CornerRadius="5" MinHeight="220" Padding="8">
+                    <Grid>
+                      <Image x:Name="ThumbnailImage" Source="{Binding Thumbnail}" MaxHeight="300" Stretch="Uniform" />
+                      <Button Command="{Binding PreviousThumbnailCommand}" HorizontalAlignment="Left" VerticalAlignment="Center" Width="34" Height="34" Padding="0" IsVisible="{Binding HasMultipleThumbnails}"><svg:Svg Path="/Assets/Icons/chevron_left.svg" Width="18" Height="18" Stretch="Uniform" /></Button>
+                      <Button Command="{Binding NextThumbnailCommand}" HorizontalAlignment="Right" VerticalAlignment="Center" Width="34" Height="34" Padding="0" IsVisible="{Binding HasMultipleThumbnails}"><svg:Svg Path="/Assets/Icons/chevron_right.svg" Width="18" Height="18" Stretch="Uniform" /></Button>
+                      <TextBlock Text="{Binding ThumbnailIndicatorText}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="4" Background="#CC080B10" IsVisible="{Binding HasMultipleThumbnails}" />
+                      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8" IsVisible="{Binding IsThumbnailLoading}">
+                        <ProgressBar Width="150" IsIndeterminate="True" />
+                        <TextBlock Text="{Binding ThumbnailStatusText}" Foreground="#9EACBC" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                  <TextBlock Text="{Binding SelectedFilePathText}" Foreground="#9EACBC" FontSize="10" TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding ThumbnailStatusText}" Foreground="#9EACBC" FontSize="11" />
+                  <TextBlock x:Name="SelectedFileDetails" Text="{Binding SelectedFileDetails}" Foreground="#B6C2D0" TextWrapping="Wrap" />
+                </StackPanel>
+              </ScrollViewer>
+              <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                <Button Command="{Binding DownloadOrCancelSelectedCommand}" ToolTip.Tip="{Binding DownloadButtonTooltip}" IsEnabled="{Binding CanDownloadSelected}" Width="38" Height="38" MinWidth="38" Padding="0"><svg:Svg Path="{Binding DownloadButtonIconPath}" Width="19" Height="19" Stretch="Uniform" /></Button>
+                <Button Command="{Binding DeleteSelectedCommand}" ToolTip.Tip="Delete selected files" IsEnabled="{Binding HasSelection}" Width="38" Height="38" MinWidth="38" Padding="0"><svg:Svg Path="/Assets/Icons/delete.svg" Width="19" Height="19" Stretch="Uniform" /></Button>
+                <Button Command="{Binding PlaySelectedCommand}" ToolTip.Tip="{Binding PlayButtonLabel}" IsEnabled="{Binding CanPreviewOrPlay}" Width="38" Height="38" MinWidth="38" Padding="0"><svg:Svg Path="/Assets/Icons/play_arrow.svg" Width="19" Height="19" Stretch="Uniform" /></Button>
+              </StackPanel>
+            </Grid>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <TabItem Classes="hidden-header" IsEnabled="{Binding IsConnected}">
+        <ScrollViewer>
+          <StackPanel Margin="0" Spacing="14">
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="6" Padding="16">
+              <StackPanel Spacing="10">
+                <TextBlock Text="Time" FontSize="17" FontWeight="SemiBold" />
+                <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="Timezone offset" VerticalAlignment="Center"/><TextBox x:Name="TimezoneBox" Width="90" Text="{Binding TimezoneOffset, Mode=TwoWay}"/><Button x:Name="SetTimezoneButton" Content="Set timezone" Command="{Binding SetTimezoneCommand}"/><Button x:Name="SetClockButton" Content="Set device time to PC time" Command="{Binding DeviceActionCommand}" CommandParameter="set-device-time"/></StackPanel>
+              </StackPanel>
+            </Border>
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="6" Padding="16">
+              <StackPanel Spacing="10">
+                <TextBlock Text="Wi-Fi" FontSize="17" FontWeight="SemiBold" />
+                <StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="SSID" VerticalAlignment="Center"/><TextBox x:Name="SsidBox" Width="220" Text="{Binding WifiSsid, Mode=TwoWay}"/><TextBlock Text="Password" VerticalAlignment="Center"/><TextBox x:Name="WifiPasswordBox" Width="220" Text="{Binding WifiPassword, Mode=TwoWay}"/><Button x:Name="SetWifiButton" Content="Save Wi-Fi" Command="{Binding SetWifiCommand}"/></StackPanel>
+                <Button x:Name="WifiRebootButton" Content="Restart camera Wi-Fi" HorizontalAlignment="Left" Command="{Binding DeviceActionCommand}" CommandParameter="wifireboot||Camera Wi-Fi restarted."/>
+              </StackPanel>
+            </Border>
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="6" Padding="16">
+              <StackPanel Spacing="10">
+                <TextBlock Text="Modes and storage" FontSize="17" FontWeight="SemiBold" />
+                <WrapPanel ItemSpacing="8" LineSpacing="8">
+                  <Button x:Name="EnterSettingsModeButton" Content="Enter settings mode" Command="{Binding DeviceActionCommand}" CommandParameter="setting?param=enter||Settings mode entered."/>
+                  <Button x:Name="ExitSettingsModeButton" Content="Exit settings mode" Command="{Binding DeviceActionCommand}" CommandParameter="setting?param=exit||Settings mode exited."/>
+                  <Button x:Name="EnterPlaybackModeButton" Content="Enter playback mode" Command="{Binding DeviceActionCommand}" CommandParameter="playback?param=enter||Playback mode entered."/>
+                  <Button x:Name="ExitPlaybackModeButton" Content="Exit playback mode" Command="{Binding DeviceActionCommand}" CommandParameter="playback?param=exit||Playback mode exited."/>
+                  <Button x:Name="FormatSdButton" Content="Format SD card" Command="{Binding FormatSdCommand}"/>
+                  <Button x:Name="FactoryResetButton" Content="Factory reset" Command="{Binding FactoryResetCommand}"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="6" Padding="16">
+              <StackPanel Spacing="10">
+                <TextBlock Text="Raw API request" FontSize="17" FontWeight="SemiBold" />
+                <TextBlock Text="Run a documented /app endpoint, with query parameters, to reach less common commands." Foreground="#9EACBC" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="8"><TextBox x:Name="RawEndpointBox" Width="420" Text="{Binding RawEndpoint, Mode=TwoWay}" PlaceholderText="getproductinfo or setparamvalue?param=mic&amp;value=0"/><Button x:Name="RawRequestButton" Content="Send GET" Command="{Binding RawRequestCommand}"/></StackPanel>
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+
+    <Border x:Name="ActivityPanel" Grid.Row="2" Height="150" Background="{StaticResource PanelBrush}" BorderBrush="#214C9D" BorderThickness="1" CornerRadius="6" Padding="12">
+      <Grid x:Name="ActivityContentGrid" RowDefinitions="30,*" RowSpacing="6">
+        <Grid ColumnDefinitions="*,Auto" Height="30" VerticalAlignment="Center">
+          <TextBlock Text="Activity" FontWeight="SemiBold" VerticalAlignment="Center" />
+          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Height="30" Spacing="8">
+            <Button x:Name="ClearLogButton" ToolTip.Tip="Clear activity" IsVisible="{Binding IsActivityExpanded}" Command="{Binding ClearActivityCommand}" Width="32" Height="30" MinWidth="32" Padding="0"><svg:Svg Path="/Assets/Icons/delete_sweep.svg" Width="19" Height="19" Stretch="Uniform"/></Button>
+            <Button x:Name="ActivityToggleButton" ToolTip.Tip="Collapse activity" Command="{Binding ToggleActivityCommand}" Width="30" Height="30" MinWidth="30" Padding="0" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"><Grid Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"><svg:Svg x:Name="ActivityCollapseIcon" IsVisible="{Binding IsActivityExpanded}" Path="/Assets/Icons/keyboard_double_arrow_down.svg" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/><svg:Svg x:Name="ActivityExpandIcon" Path="/Assets/Icons/keyboard_double_arrow_up.svg" Width="20" Height="20" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding IsActivityCollapsed}"/></Grid></Button>
+          </StackPanel>
+        </Grid>
+        <TextBox x:Name="LogBox" Grid.Row="1" IsVisible="{Binding IsActivityExpanded}" Text="{Binding ActivityText, Mode=TwoWay}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Background="Transparent" BorderThickness="0" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

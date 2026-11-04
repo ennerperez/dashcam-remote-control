@@ -1,0 +1,9 @@
+{
+  "platformOptions": {
+    "resultDirectory": "artifacts/results"
+  },
+  "xUnit": {
+    "parallelizeTestCollections": false,
+    "parallelMode": "none"
+  }
+}

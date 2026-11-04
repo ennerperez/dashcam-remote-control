@@ -1,0 +1,22 @@
+<Solution>
+  <Folder Name="/files/">
+    <File Path=".aiignore" />
+    <File Path=".editorconfig" />
+    <File Path=".editoricon.png" />
+    <File Path=".editoricon.svg" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="AGENTS.md" />
+    <File Path="GitVersion.yml" />
+    <File Path="global.json" />
+    <File Path="LICENSE" />
+    <File Path="README.md" />
+    <File Path="testconfig.json" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Dashcam.Remote.Control/Dashcam.Remote.Control.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UnitTests/UnitTests.csproj" />
+  </Folder>
+</Solution>
