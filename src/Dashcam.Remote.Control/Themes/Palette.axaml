@@ -1,0 +1,66 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <SolidColorBrush x:Key="AppBackgroundBrush" Color="#061632" />
+  <SolidColorBrush x:Key="VideoBackgroundBrush" Color="#05070B" />
+  <SolidColorBrush x:Key="CameraBackgroundBrush" Color="#080B10" />
+  <SolidColorBrush x:Key="InputBackgroundBrush" Color="#0A1E45" />
+  <SolidColorBrush x:Key="PanelBaseBrush" Color="#0C2B68" />
+  <SolidColorBrush x:Key="DisabledTileBrush" Color="#10264D" />
+  <SolidColorBrush x:Key="SettingsRowBrush" Color="#19212C" />
+  <SolidColorBrush x:Key="PanelBorderBrush" Color="#214C9D" />
+  <SolidColorBrush x:Key="DisabledBorderBrush" Color="#263B61" />
+  <SolidColorBrush x:Key="MapAttributionForegroundBrush" Color="#27364A" />
+  <SolidColorBrush x:Key="InputBorderBrush" Color="#355BA4" />
+  <SolidColorBrush x:Key="TileStartBrush" Color="#087DFF" />
+  <SolidColorBrush x:Key="ButtonBorderBrush" Color="#4F7EFF" />
+  <SolidColorBrush x:Key="ButtonBackgroundBrush" Color="#164AC7" />
+  <SolidColorBrush x:Key="TileBorderBrush" Color="#528DFF" />
+  <SolidColorBrush x:Key="TileMiddleBrush" Color="#2547F5" />
+  <SolidColorBrush x:Key="TileEndBrush" Color="#4827CF" />
+  <SolidColorBrush x:Key="TileHoverBrush" Color="#176DF5" />
+  <SolidColorBrush x:Key="ButtonHoverBrush" Color="#2475FF" />
+  <SolidColorBrush x:Key="ButtonPressedBrush" Color="#293ACC" />
+  <SolidColorBrush x:Key="SelectedTileStartBrush" Color="#28A2FF" />
+  <SolidColorBrush x:Key="SelectedTileMiddleBrush" Color="#2163FF" />
+  <SolidColorBrush x:Key="SelectedTileEndBrush" Color="#5536E8" />
+  <SolidColorBrush x:Key="SelectedTileBorderBrush" Color="#A3D5FF" />
+  <SolidColorBrush x:Key="ActiveTileBorderBrush" Color="#C5E8FF" />
+  <SolidColorBrush x:Key="AccentBrush" Color="#70AEFF" />
+  <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F5F8FF" />
+  <SolidColorBrush x:Key="TextBrightBrush" Color="#F4F8FF" />
+  <SolidColorBrush x:Key="TextInputBrush" Color="#F2F7FF" />
+  <SolidColorBrush x:Key="TextSecondaryBrush" Color="#DCEBFF" />
+  <SolidColorBrush x:Key="TextCardLabelBrush" Color="#D6E7FF" />
+  <SolidColorBrush x:Key="TextAccentBrush" Color="#A9C9FF" />
+  <SolidColorBrush x:Key="TextMutedBrush" Color="#9EACBC" />
+  <SolidColorBrush x:Key="TextSoftBrush" Color="#B6C2D0" />
+  <SolidColorBrush x:Key="TextFaintBrush" Color="#7896C1" />
+  <SolidColorBrush x:Key="DisabledTextBrush" Color="#7187AD" />
+  <SolidColorBrush x:Key="WarningBrush" Color="#FFD66E" />
+  <SolidColorBrush x:Key="DangerBrush" Color="#C52D42" />
+  <SolidColorBrush x:Key="DangerHoverBrush" Color="#E13E53" />
+  <SolidColorBrush x:Key="DangerPressedBrush" Color="#A51D32" />
+  <SolidColorBrush x:Key="DangerBorderBrush" Color="#FF8190" />
+  <SolidColorBrush x:Key="MediaMapBackgroundBrush" Color="#E7EEF5" />
+  <SolidColorBrush x:Key="MapAttributionBackgroundBrush" Color="#CCFFFFFF" />
+  <SolidColorBrush x:Key="VideoOverlayBrush" Color="#C9061632" />
+  <SolidColorBrush x:Key="ThumbnailOverlayBrush" Color="#CC080B10" />
+  <SolidColorBrush x:Key="TransparentOverlayBrush" Color="#01000000" />
+  <SolidColorBrush x:Key="WhiteBrush" Color="#FFFFFFFF" />
+  <SolidColorBrush x:Key="TransparentBrush" Color="#00000000" />
+
+  <LinearGradientBrush x:Key="PanelBrush" StartPoint="50%,0%" EndPoint="50%,100%">
+    <GradientStop Color="#0C2B68" Offset="0" />
+    <GradientStop Color="#111F60" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="TileBrush" StartPoint="50%,0%" EndPoint="50%,100%">
+    <GradientStop Color="#087DFF" Offset="0" />
+    <GradientStop Color="#2547F5" Offset="0.58" />
+    <GradientStop Color="#4827CF" Offset="1" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="SelectedTileBrush" StartPoint="50%,0%" EndPoint="50%,100%">
+    <GradientStop Color="#28A2FF" Offset="0" />
+    <GradientStop Color="#2163FF" Offset="0.55" />
+    <GradientStop Color="#5536E8" Offset="1" />
+  </LinearGradientBrush>
+</ResourceDictionary>

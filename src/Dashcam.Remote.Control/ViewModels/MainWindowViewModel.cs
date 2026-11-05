@@ -142,7 +142,7 @@ namespace Dashcam.Remote
         public string RawEndpoint { get => _rawEndpoint; set => Set(ref _rawEndpoint, value); }
         public bool IsConnected
         {
-            get => _isConnected; private set
+            get => _isConnected || Avalonia.Controls.Design.IsDesignMode; private set
             {
                 if (!Set(ref _isConnected, value))
                 {
@@ -173,7 +173,7 @@ namespace Dashcam.Remote
                 OnPropertyChanged(nameof(IsHostEnabled)); NotifyConnectionPresentation(); NotifyCommands();
             }
         }
-        public bool IsNavigationEnabled => IsConnected && !IsLivePreviewActive;
+        public bool IsNavigationEnabled => Avalonia.Controls.Design.IsDesignMode || IsConnected && !IsLivePreviewActive;
         public bool IsFileExplorerNavigationEnabled => !IsLivePreviewActive;
         public bool IsHostEnabled => !IsConnected && !IsConnecting;
         public bool IsActivityCollapsed
@@ -223,7 +223,7 @@ namespace Dashcam.Remote
         public bool ShowConnectIcon => !IsConnecting && !IsConnected;
         public bool ShowCancelIcon => IsConnecting;
         public bool ShowDisconnectIcon => IsConnected;
-        public bool IsConnectEnabled => IsConnecting || IsConnected || IsValidIpv4(DeviceIp);
+        public bool IsConnectEnabled => Avalonia.Controls.Design.IsDesignMode || IsConnecting || IsConnected || IsValidIpv4(DeviceIp);
         public bool WifiRebootRequired => _wifiRebootRequired;
         public double StorageUsagePercent { get => _storageUsagePercent; private set => Set(ref _storageUsagePercent, value); }
         public bool IsStorageAvailable { get => _isStorageAvailable; private set => Set(ref _isStorageAvailable, value); }
@@ -1350,8 +1350,14 @@ namespace Dashcam.Remote
     public sealed class RelayCommand(Action<object?> execute, Predicate<object?>? canExecute = null) : ICommand
     {
         public event EventHandler? CanExecuteChanged;
-        public bool CanExecute(object? parameter) => canExecute?.Invoke(parameter) ?? true;
-        public void Execute(object? parameter) => execute(parameter);
+        public bool CanExecute(object? parameter) => Avalonia.Controls.Design.IsDesignMode || (canExecute?.Invoke(parameter) ?? true);
+        public void Execute(object? parameter)
+        {
+            if (!Avalonia.Controls.Design.IsDesignMode)
+            {
+                execute(parameter);
+            }
+        }
         public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
     }
 
@@ -1360,9 +1366,14 @@ namespace Dashcam.Remote
         private bool _isRunning;
         public bool IsRunning => _isRunning;
         public event EventHandler? CanExecuteChanged;
-        public bool CanExecute(object? parameter) => (allowWhileRunning || !_isRunning) && (canExecute?.Invoke() ?? true);
+        public bool CanExecute(object? parameter) => Avalonia.Controls.Design.IsDesignMode || (allowWhileRunning || !_isRunning) && (canExecute?.Invoke() ?? true);
         public async void Execute(object? parameter)
         {
+            if (Avalonia.Controls.Design.IsDesignMode)
+            {
+                return;
+            }
+
             if (_isRunning && !allowWhileRunning || !CanExecute(parameter))
             {
                 return;
@@ -1398,9 +1409,14 @@ namespace Dashcam.Remote
         private bool _isRunning;
         public event EventHandler? CanExecuteChanged;
         public event Action<Exception>? Failed;
-        public bool CanExecute(object? parameter) => !_isRunning && (canExecute?.Invoke(parameter) ?? true);
+        public bool CanExecute(object? parameter) => Avalonia.Controls.Design.IsDesignMode || !_isRunning && (canExecute?.Invoke(parameter) ?? true);
         public async void Execute(object? parameter)
         {
+            if (Avalonia.Controls.Design.IsDesignMode)
+            {
+                return;
+            }
+
             if (!CanExecute(parameter))
             {
                 return;

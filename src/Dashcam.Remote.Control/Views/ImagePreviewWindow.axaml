@@ -6,7 +6,7 @@
         Icon="/Assets/Icons/dashcam-remote-control.ico"
         Title="Dashcam Photo Preview"
         Width="900" Height="650" MinWidth="500" MinHeight="360"
-        CanResize="True" Background="#061632"
+        CanResize="True" Classes="app-window image-preview-window"
         WindowStartupLocation="CenterOwner">
   <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
     <ItemsControl x:Name="PreviewItems" ItemsSource="{Binding Images}">
@@ -16,8 +16,8 @@
       <ItemsControl.ItemTemplate>
         <DataTemplate x:DataType="vm:PreviewImageItem">
           <Grid RowDefinitions="Auto,*" Margin="6" RowSpacing="8" HorizontalAlignment="Stretch">
-            <TextBlock Text="{Binding Label}" HorizontalAlignment="Center" Foreground="#DCEBFF" />
-            <Border Grid.Row="1" Background="#05070B" CornerRadius="6" Padding="8">
+            <TextBlock Classes="secondary" Text="{Binding Label}" HorizontalAlignment="Center" />
+            <Border Grid.Row="1" Background="{DynamicResource VideoBackgroundBrush}" CornerRadius="6" Padding="8">
               <Image Source="{Binding Image}" Stretch="Uniform" />
             </Border>
           </Grid>
