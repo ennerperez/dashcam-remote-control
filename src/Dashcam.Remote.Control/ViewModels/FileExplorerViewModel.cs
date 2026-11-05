@@ -30,12 +30,14 @@ namespace Dashcam.Remote
         private string _thumbnailStatusText = "Select a file to preview.";
         private string _searchText = string.Empty;
         private string _searchStatus = string.Empty;
+        private string _stateFilter = "All";
         private string _downloadButtonText = "Download";
         private string _downloadButtonTooltip = "Download selected files";
         private bool _isConnected;
         private bool _isFilesLoading;
         private bool _isThumbnailLoading;
         private bool _isFrontBackView;
+        private bool _isListViewMode;
         private int _thumbnailIndex;
         private string? _loadedManifestHost;
         private string? _downloadDirectory;
@@ -48,7 +50,7 @@ namespace Dashcam.Remote
             SetDeviceFolders();
 
             EnterCommand = new AsyncCommand(EnterAsync, () => IsConnected);
-            RefreshCommand = new AsyncCommand(RefreshFromDeviceAsync, () => IsConnected);
+            RefreshCommand = new AsyncCommand(RefreshAndValidateAsync, () => IsConnected);
             SelectSdCardCommand = new RelayCommand(_ => SelectedFolder = "SDCard", _ => IsConnected);
             ChooseLocalFolderCommand = new AsyncCommand(ChooseLocalFolderAsync);
             ((AsyncCommand)ChooseLocalFolderCommand).Failed += exception => CommandFailed?.Invoke(exception);
@@ -56,15 +58,22 @@ namespace Dashcam.Remote
             DownloadOrCancelSelectedCommand = new AsyncCommand(DownloadOrCancelSelectedAsync, () => IsConnected && SelectedEntries.Count > 0);
             CancelSelectedDownloadsCommand = new RelayCommand(_ => CancelSelectedDownloads(), _ => HasSelectedActiveDownloads);
             DeleteSelectedCommand = new AsyncCommand(DeleteSelectedAsync, () => IsConnected && SelectedEntries.Count > 0);
-            PlaySelectedCommand = new AsyncCommand(PlaySelectedAsync, () => IsConnected && SelectedEntries.Count == 1);
+            PlaySelectedCommand = new AsyncCommand(PlaySelectedAsync, () => SelectedEntries.Count == 1);
             SearchCommand = new RelayCommand(_ => SearchManifest(), _ => IsConnected && !string.IsNullOrWhiteSpace(SearchText));
+            SetStateFilterCommand = new RelayCommand(SetStateFilter);
             ToggleFrontBackCommand = new RelayCommand(_ => IsFrontBackView = !IsFrontBackView, _ => IsConnected);
             PreviousThumbnailCommand = new RelayCommand(_ => SetThumbnailIndex(ThumbnailIndex - 1), _ => ThumbnailCount > 1);
             NextThumbnailCommand = new RelayCommand(_ => SetThumbnailIndex(ThumbnailIndex + 1), _ => ThumbnailCount > 1);
+
+            if (Avalonia.Controls.Design.IsDesignMode)
+            {
+                LoadDesignFiles();
+            }
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         public ObservableCollection<ExplorerFileItem> Files { get; } = [];
+        public ObservableCollection<ExplorerFileItem> VisibleFiles { get; } = [];
         public ObservableCollection<ExplorerFileItem> SelectedEntries { get; } = [];
         public ObservableCollection<StorageFolderItem> FileFolders { get; } = [];
         public ObservableCollection<DownloadQueueItem> DownloadQueue { get; } = [];
@@ -78,6 +87,7 @@ namespace Dashcam.Remote
         public ICommand DeleteSelectedCommand { get; }
         public ICommand PlaySelectedCommand { get; }
         public ICommand SearchCommand { get; }
+        public ICommand SetStateFilterCommand { get; }
         public ICommand ToggleFrontBackCommand { get; }
         public ICommand PreviousThumbnailCommand { get; }
         public ICommand NextThumbnailCommand { get; }
@@ -94,7 +104,7 @@ namespace Dashcam.Remote
 
         public bool IsConnected
         {
-            get => _isConnected;
+            get => _isConnected || Avalonia.Controls.Design.IsDesignMode;
             set
             {
                 if (!Set(ref _isConnected, value))
@@ -212,9 +222,22 @@ namespace Dashcam.Remote
             {
                 if (!IsConnected)
                 {
-                    if (value is not null)
+                    if (value is null)
                     {
-                        LoadLocalDirectory(value.Name);
+                        return;
+                    }
+
+                    var path = value.Name;
+                    if (!string.Equals(_selectedLocalDirectory, path, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Defer replacing this ListBox source until its selection event has completed.
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            if (!IsConnected && FileFolders.Any(folder => string.Equals(folder.Name, path, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                LoadLocalDirectory(path);
+                            }
+                        });
                     }
 
                     return;
@@ -223,11 +246,36 @@ namespace Dashcam.Remote
                 SelectedFolder = value?.Name ?? "SDCard";
             }
         }
-        public bool HasSelection => SelectedEntries.Count > 0;
-        public bool CanDownloadSelected => IsConnected && HasSelection;
-        public bool CanPreviewOrPlay => SelectedEntries.Count == 1;
+        public bool HasSelection => Avalonia.Controls.Design.IsDesignMode || SelectedEntries.Count > 0;
+        public bool? AreAllFilesSelected => VisibleFiles.Count == 0 || SelectedEntries.Count == 0
+            ? false
+            : SelectedEntries.Count == VisibleFiles.Count ? true : null;
+        public bool CanDownloadSelected => Avalonia.Controls.Design.IsDesignMode || IsConnected && HasSelection;
+        public bool CanPreviewOrPlay => Avalonia.Controls.Design.IsDesignMode || SelectedEntries.Count == 1;
         public bool HasSelectedActiveDownloads => SelectedEntries.SelectMany(entry => entry.Files).Any(IsFileDownloading);
         public string PlayButtonLabel => SelectedEntries.Count == 1 && SelectedEntries[0].IsPhoto ? "Preview" : "Play";
+        public string StateFilterButtonText => $"State: {_stateFilter}";
+        public string ViewModeIconPath => IsListViewMode ? "/Assets/Icons/grid_view.svg" : "/Assets/Icons/view_list.svg";
+        public string ViewModeToolTip => IsListViewMode ? "Switch to item view" : "Switch to list view";
+        public bool IsListViewMode
+        {
+            get => _isListViewMode;
+            set
+            {
+                if (!Set(ref _isListViewMode, value))
+                {
+                    return;
+                }
+
+                foreach (var entry in Files)
+                {
+                    entry.IsListViewMode = value;
+                }
+
+                OnPropertyChanged(nameof(ViewModeIconPath));
+                OnPropertyChanged(nameof(ViewModeToolTip));
+            }
+        }
         public Bitmap? Thumbnail => _thumbnails.Count == 0 ? null : _thumbnails[Math.Clamp(ThumbnailIndex, 0, _thumbnails.Count - 1)];
         public string SelectedFilePathText => SelectedEntries.Count == 1 && SelectedEntries[0].Files.Count > 0
             ? SelectedEntries[0].Files[Math.Clamp(ThumbnailIndex, 0, SelectedEntries[0].Files.Count - 1)].Name
@@ -364,7 +412,13 @@ namespace Dashcam.Remote
         {
             _selectedLocalDirectory = Path.GetFullPath(path);
             _localFiles.Clear();
-            foreach (var filePath in Directory.EnumerateFiles(_selectedLocalDirectory))
+            var enumerationOptions = new EnumerationOptions
+            {
+                RecurseSubdirectories = true,
+                IgnoreInaccessible = true,
+                AttributesToSkip = FileAttributes.ReparsePoint
+            };
+            foreach (var filePath in Directory.EnumerateFiles(_selectedLocalDirectory, "*", enumerationOptions).Where(IsSupportedFile))
             {
                 var file = new FileInfo(filePath);
                 _localFiles.Add(new DeviceFile("Local", file.FullName, file.Length, -1, file.LastWriteTime.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture)));
@@ -376,7 +430,7 @@ namespace Dashcam.Remote
                 var folder = new StorageFolderItem(directoryPath, _ => Task.CompletedTask, _ => { }, _ => false, _ => false);
                 try
                 {
-                    folder.FileCount = Directory.EnumerateFiles(directoryPath).Count();
+                    folder.FileCount = Directory.EnumerateFiles(directoryPath, "*", enumerationOptions).Count(IsSupportedFile);
                 }
                 catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
                 {
@@ -393,6 +447,25 @@ namespace Dashcam.Remote
             OnPropertyChanged(nameof(CanNavigateLocalUp));
             OnPropertyChanged(nameof(SdCardSummary));
             ((RelayCommand)NavigateLocalUpCommand).RaiseCanExecuteChanged();
+        }
+
+        private async Task RefreshAndValidateAsync()
+        {
+            if (string.IsNullOrWhiteSpace(_downloadDirectory))
+            {
+                if (ChooseDownloadDirectoryRequested is null)
+                {
+                    return;
+                }
+
+                _downloadDirectory = await ChooseDownloadDirectoryRequested();
+                if (string.IsNullOrWhiteSpace(_downloadDirectory))
+                {
+                    return;
+                }
+            }
+
+            await RefreshFromDeviceAsync();
         }
 
         private async Task RefreshFromDeviceAsync()
@@ -432,7 +505,12 @@ namespace Dashcam.Remote
 
                             foreach (var file in files.EnumerateArray())
                             {
-                                loaded.Add(new DeviceFile(folderName, TextValue(file, "name", string.Empty), LongValue(file, "size", 0), IntegerValue(file, "duration", -1), TextValue(file, "createtime", TextValue(file, "createtimestr", string.Empty)), IntegerValue(file, "type", -1)));
+                                var deviceFile = new DeviceFile(folderName, TextValue(file, "name", string.Empty), LongValue(file, "size", 0), IntegerValue(file, "duration", -1), TextValue(file, "createtime", TextValue(file, "createtimestr", string.Empty)), IntegerValue(file, "type", -1));
+                                if (IsSupportedFile(deviceFile.Name))
+                                {
+                                    loaded.Add(deviceFile);
+                                }
+
                                 count++;
                             }
                         }
@@ -446,6 +524,7 @@ namespace Dashcam.Remote
                 _manifestFiles.Clear();
                 _manifestFiles.AddRange(loaded);
                 _loadedManifestHost = _api.Host;
+                ReconcileDownloadedFiles(loaded);
                 RebuildFolderCounts();
                 RebuildEntries();
                 OnPropertyChanged(nameof(SdCardSummary));
@@ -483,8 +562,9 @@ namespace Dashcam.Remote
                 }
 
                 _manifestFiles.Clear();
-                _manifestFiles.AddRange(manifest.Files);
+                _manifestFiles.AddRange(manifest.Files.Where(file => IsSupportedFile(file.Name)));
                 _loadedManifestHost = host;
+                ReconcileDownloadedFiles(_manifestFiles);
                 RebuildFolderCounts();
                 RebuildEntries();
                 OnPropertyChanged(nameof(SdCardSummary));
@@ -580,7 +660,135 @@ namespace Dashcam.Remote
                 folder.RefreshDownloadState();
             }
 
+            RefreshVisibleFiles();
             OnPropertyChanged(nameof(SdCardSummary));
+        }
+
+        private void LoadDesignFiles()
+        {
+            _manifestFiles.AddRange(
+            [
+                new DeviceFile("loop", "/mnt/card/VIDEO_F/2026-11-04_12_01_16_F.ts", 18_874_368, 180, "2026-11-04 12:01:16", 0),
+                new DeviceFile("loop", "/mnt/card/VIDEO_B/2026-11-04_12_01_17_B.ts", 18_521_600, 180, "2026-11-04 12:01:17", 0),
+                new DeviceFile("loop", "/mnt/card/VIDEO_F/2026-11-04_12_04_16_F.ts", 16_777_216, 165, "2026-11-04 12:04:16", 0),
+                new DeviceFile("event", "/mnt/card/PHOTO_F/2026-11-04_12_05_16_F.jpg", 82_104, 0, "2026-11-04 12:05:16", 1),
+                new DeviceFile("event", "/mnt/card/PHOTO_B/2026-11-04_12_05_17_B.jpg", 80_992, 0, "2026-11-04 12:05:17", 1)
+            ]);
+
+            foreach (var file in _manifestFiles)
+            {
+                if (!_filesByFolder.TryGetValue(file.Folder, out var folderFiles))
+                {
+                    folderFiles = [];
+                    _filesByFolder.Add(file.Folder, folderFiles);
+                }
+
+                folderFiles.Add(file);
+            }
+
+            RebuildFolderCounts();
+            SelectedFolder = "SDCard";
+        }
+
+        private void SetStateFilter(object? parameter)
+        {
+            if (parameter is not string filter || filter is not ("All" or "Ready" or "Queued" or "Downloading" or "Downloaded" or "Corrupted" or "Failed" or "Cancelled") || _stateFilter == filter)
+            {
+                return;
+            }
+
+            _stateFilter = filter;
+            OnPropertyChanged(nameof(StateFilterButtonText));
+            SetSelectedEntries([]);
+            RefreshVisibleFiles();
+        }
+
+        private bool MatchesStateFilter(ExplorerFileItem entry)
+        {
+            if (_stateFilter == "All")
+            {
+                return true;
+            }
+
+            return entry.Files.Any(file =>
+            {
+                var task = _downloadHistory.GetValueOrDefault(GetFileKey(file));
+                return _stateFilter switch
+                {
+                    "Ready" => task is null,
+                    "Queued" => task?.State == DownloadState.Queued,
+                    "Downloading" => task?.State == DownloadState.Downloading,
+                    "Downloaded" => task?.State == DownloadState.Completed,
+                    "Corrupted" => task?.State == DownloadState.Corrupted,
+                    "Failed" => task?.State == DownloadState.Failed,
+                    "Cancelled" => task?.State == DownloadState.Cancelled,
+                    _ => true
+                };
+            });
+        }
+
+        private void RefreshVisibleFiles()
+        {
+            var visible = Files.Where(MatchesStateFilter).ToArray();
+            if (!VisibleFiles.SequenceEqual(visible))
+            {
+                VisibleFiles.Clear();
+                foreach (var entry in visible)
+                {
+                    VisibleFiles.Add(entry);
+                }
+            }
+
+            OnPropertyChanged(nameof(AreAllFilesSelected));
+        }
+
+        private void ReconcileDownloadedFiles(IEnumerable<DeviceFile> files)
+        {
+            if (string.IsNullOrWhiteSpace(_downloadDirectory))
+            {
+                return;
+            }
+
+            foreach (var file in files)
+            {
+                var key = GetFileKey(file);
+                if (_activeDownloads.ContainsKey(key))
+                {
+                    continue;
+                }
+
+                var outputDirectory = Path.Combine(_downloadDirectory, Path.GetFileName(file.Folder));
+                var outputPath = Path.Combine(outputDirectory, Path.GetFileName(file.Name));
+                if (!File.Exists(outputPath))
+                {
+                    if (_downloadHistory.TryGetValue(key, out var previous) && previous.State is DownloadState.Completed or DownloadState.Corrupted)
+                    {
+                        _downloadHistory.Remove(key);
+                    }
+
+                    continue;
+                }
+
+                long localSize;
+                try
+                {
+                    localSize = new FileInfo(outputPath).Length;
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    localSize = -1;
+                    Log?.Invoke($"Could not read downloaded file size for {Path.GetFileName(file.Name)}: {exception.Message}");
+                }
+
+                var task = new DownloadQueueItem(file)
+                {
+                    State = localSize == file.Size ? DownloadState.Completed : DownloadState.Corrupted,
+                    BytesTransferred = Math.Max(0, localSize),
+                    TotalBytes = file.Size
+                };
+                task.Cancellation.Dispose();
+                _downloadHistory[key] = task;
+            }
         }
 
         private List<ExplorerFileItem> BuildGroupedEntries(IReadOnlyList<DeviceFile> files)
@@ -635,6 +843,7 @@ namespace Dashcam.Remote
         private ExplorerFileItem CreateEntry(IReadOnlyList<DeviceFile> files, bool grouped = false, string? name = null)
         {
             var item = new ExplorerFileItem(files, grouped, name ?? Path.GetFileName(files[0].Name), ContextDownloadAsync, CanDownloadContextEntry, ContextDeleteAsync, ContextPreviewAsync, CancelContextDownloads, CanCancelContextDownloads, RefreshEntryDownloadState);
+            item.IsListViewMode = IsListViewMode;
             ((AsyncCommand)item.DownloadCommand).Failed += exception => CommandFailed?.Invoke(exception);
             ((AsyncCommand)item.DeleteCommand).Failed += exception => CommandFailed?.Invoke(exception);
             ((AsyncCommand)item.DeleteCommand).Finished += () => OperationCompleted?.Invoke();
@@ -661,6 +870,7 @@ namespace Dashcam.Remote
                 ThumbnailStatusText = SelectedEntries.Count == 0 ? "Select a file to preview." : "Preview is available for one selected item.";
             }
             OnPropertyChanged(nameof(HasSelection));
+            OnPropertyChanged(nameof(AreAllFilesSelected));
             OnPropertyChanged(nameof(CanDownloadSelected));
             OnPropertyChanged(nameof(CanPreviewOrPlay));
             OnPropertyChanged(nameof(PlayButtonLabel));
@@ -707,7 +917,7 @@ namespace Dashcam.Remote
 
         private async Task LoadThumbnailsAsync(ExplorerFileItem entry)
         {
-            if (!IsConnected || SelectedEntries.Count != 1)
+            if (SelectedEntries.Count != 1)
             {
                 return;
             }
@@ -722,10 +932,24 @@ namespace Dashcam.Remote
                 foreach (var file in entry.Files)
                 {
                     cancellation.Token.ThrowIfCancellationRequested();
-                    var path = DeviceApi.EscapeFilePath(file.Name, true);
-                    var bytes = await _api.GetBytesAsync($"app/getthumbnail?file={path}", cancellation.Token);
-                    await using var stream = new MemoryStream(bytes);
-                    var bitmap = new Bitmap(stream);
+                    Bitmap bitmap;
+                    if (IsConnected)
+                    {
+                        var path = DeviceApi.EscapeFilePath(file.Name, true);
+                        var bytes = await _api.GetBytesAsync($"app/getthumbnail?file={path}", cancellation.Token);
+                        await using var stream = new MemoryStream(bytes);
+                        bitmap = new Bitmap(stream);
+                    }
+                    else if (entry.IsPhoto)
+                    {
+                        bitmap = new Bitmap(file.Name);
+                    }
+                    else
+                    {
+                        ThumbnailStatusText = "Use Play to open this local video.";
+                        return;
+                    }
+
                     if (cancellation.IsCancellationRequested || !SelectedEntries.Contains(entry))
                     {
                         bitmap.Dispose();
@@ -813,10 +1037,20 @@ namespace Dashcam.Remote
             {
                 foreach (var file in entry.Files)
                 {
-                    var path = DeviceApi.EscapeFilePath(file.Name, false);
-                    var bytes = await _api.GetBytesAsync(path);
-                    await using var stream = new MemoryStream(bytes);
-                    images.Add(new PreviewImageItem(Path.GetFileName(file.Name), new Bitmap(stream)));
+                    Bitmap image;
+                    if (IsConnected)
+                    {
+                        var path = DeviceApi.EscapeFilePath(file.Name, false);
+                        var bytes = await _api.GetBytesAsync(path);
+                        await using var stream = new MemoryStream(bytes);
+                        image = new Bitmap(stream);
+                    }
+                    else
+                    {
+                        image = new Bitmap(file.Name);
+                    }
+
+                    images.Add(new PreviewImageItem(Path.GetFileName(file.Name), image));
                 }
                 PreviewImagesRequested(images);
             }
@@ -846,6 +1080,12 @@ namespace Dashcam.Remote
             }
             if (PlayVideosRequested is null)
             {
+                return;
+            }
+
+            if (!IsConnected)
+            {
+                PlayVideosRequested(entry.Files.Select(file => new Uri(Path.GetFullPath(file.Name))).ToArray());
                 return;
             }
 
@@ -1042,6 +1282,18 @@ namespace Dashcam.Remote
                 var outputDirectory = Path.Combine(_downloadDirectory!, subfolder);
                 Directory.CreateDirectory(outputDirectory);
                 outputPath = Path.Combine(outputDirectory, Path.GetFileName(task.File.Name));
+                if (File.Exists(outputPath))
+                {
+                    var existingSize = new FileInfo(outputPath).Length;
+                    task.TotalBytes = task.File.Size;
+                    task.BytesTransferred = existingSize;
+                    task.State = existingSize == task.File.Size ? DownloadState.Completed : DownloadState.Corrupted;
+                    Log?.Invoke(task.State == DownloadState.Completed
+                        ? $"Download skipped; file already exists: {Path.GetFileName(task.File.Name)}"
+                        : $"Existing file is corrupted: {Path.GetFileName(task.File.Name)} ({existingSize} bytes; expected {task.File.Size} bytes).");
+                    return;
+                }
+
                 partialPath = $"{outputPath}.partial";
                 await using (var output = new FileStream(partialPath, FileMode.Create, FileAccess.Write, FileShare.None, 64 * 1024, true))
                 {
@@ -1112,7 +1364,7 @@ namespace Dashcam.Remote
                     _activeDownloads.Remove(GetFileKey(task.File));
                     RefreshAllDownloadVisuals();
                     OnPropertyChanged(nameof(HasSelectedActiveDownloads));
-                    if (task.State is DownloadState.Completed or DownloadState.Failed or DownloadState.Cancelled)
+                    if (task.State is DownloadState.Completed or DownloadState.Corrupted or DownloadState.Failed or DownloadState.Cancelled)
                     {
                         OperationCompleted?.Invoke();
                     }
@@ -1185,6 +1437,7 @@ namespace Dashcam.Remote
                     DownloadState.Queued => "Queued",
                     DownloadState.Downloading => totalBytes > 0 ? $"Downloading {percent:0}%" : "Downloading",
                     DownloadState.Completed => "Downloaded",
+                    DownloadState.Corrupted => "Corrupted",
                     DownloadState.Cancelled => "Cancelled",
                     DownloadState.Failed => "Failed",
                     _ => "Ready to download"
@@ -1194,9 +1447,10 @@ namespace Dashcam.Remote
             var queued = tasks.Count(task => task?.State == DownloadState.Queued);
             var downloading = tasks.Count(task => task?.State == DownloadState.Downloading);
             var completed = tasks.Count(task => task?.State == DownloadState.Completed);
+            var corrupted = tasks.Count(task => task?.State == DownloadState.Corrupted);
             var failed = tasks.Count(task => task?.State == DownloadState.Failed);
             var cancelled = tasks.Count(task => task?.State == DownloadState.Cancelled);
-            var ready = tasks.Length - queued - downloading - completed - failed - cancelled;
+            var ready = tasks.Length - queued - downloading - completed - corrupted - failed - cancelled;
             var parts = new List<string>();
             if (downloading > 0)
             {
@@ -1211,6 +1465,11 @@ namespace Dashcam.Remote
             if (completed > 0)
             {
                 parts.Add($"{completed} downloaded");
+            }
+
+            if (corrupted > 0)
+            {
+                parts.Add($"{corrupted} corrupted");
             }
 
             if (failed > 0)
@@ -1233,6 +1492,12 @@ namespace Dashcam.Remote
 
         private void RefreshAllDownloadVisuals()
         {
+            if (!Dispatcher.UIThread.CheckAccess())
+            {
+                Dispatcher.UIThread.Post(RefreshAllDownloadVisuals);
+                return;
+            }
+
             foreach (var entry in Files)
             {
                 entry.RefreshDownloadState();
@@ -1248,6 +1513,7 @@ namespace Dashcam.Remote
             DownloadButtonTooltip = HasSelectedActiveDownloads ? "Cancel selected downloads" : "Queue selected files for download";
             OnPropertyChanged(nameof(DownloadButtonIconPath));
             ((RelayCommand)CancelSelectedDownloadsCommand).RaiseCanExecuteChanged();
+            RefreshVisibleFiles();
         }
 
         private static string GetFileKey(DeviceFile file) => $"{file.Folder}/{file.Name}";
@@ -1292,6 +1558,12 @@ namespace Dashcam.Remote
         private static string TextValue(JsonElement element, string property, string fallback) => element.TryGetProperty(property, out var value) ? value.ToString() : fallback;
         private static int IntegerValue(JsonElement element, string property, int fallback) => element.TryGetProperty(property, out var value) && value.TryGetInt32(out var parsed) ? parsed : fallback;
         private static long LongValue(JsonElement element, string property, long fallback) => element.TryGetProperty(property, out var value) && value.TryGetInt64(out var parsed) ? parsed : fallback;
+        private static bool IsSupportedFile(string path)
+        {
+            var extension = Path.GetExtension(path);
+            return extension.Equals(".ts", StringComparison.OrdinalIgnoreCase)
+                || extension.Equals(".jpg", StringComparison.OrdinalIgnoreCase);
+        }
 
         private bool Set<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {

@@ -1,7 +1,9 @@
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using LibVLCSharp.Avalonia;
@@ -137,6 +139,34 @@ namespace Dashcam.Remote
                 _viewModel.Dispose();
             };
             Log("Ready. Connect to 192.168.169.1 or enter the device IP.");
+        }
+
+        private void OnContextMenuOpening(object? sender, CancelEventArgs e)
+        {
+            if (sender is ContextMenu menu)
+            {
+                menu.DataContext = menu.PlacementTarget?.DataContext;
+            }
+        }
+
+        private void OnSelectAllFilesClicked(object? sender, RoutedEventArgs e)
+        {
+            var selectedItems = FilesList.SelectedItems;
+            if (selectedItems is null)
+            {
+                return;
+            }
+
+            selectedItems.Clear();
+            if (SelectAllFilesCheckBox.IsChecked is not true)
+            {
+                return;
+            }
+
+            foreach (var file in _viewModel.FileExplorer.VisibleFiles)
+            {
+                selectedItems.Add(file);
+            }
         }
 
         private void UpdateNavigationHighlight(int index)

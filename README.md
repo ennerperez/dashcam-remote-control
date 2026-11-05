@@ -32,6 +32,30 @@ dotnet build dashcam-remote-control.slnx
 dotnet run --project src/Dashcam.Remote.Control/Dashcam.Remote.Control.csproj
 ```
 
+## Mock dashcam
+
+Run the mock device server in a second terminal:
+
+```powershell
+dotnet run --project src/Dashcam.Remote.Control.MockDevice/Dashcam.Remote.Control.MockDevice.csproj
+```
+
+The server listens on all network interfaces at HTTP port 80. Enter this computer's IPv4 address in the app's Device IP field. Use `127.0.0.1` when both programs run on the same computer. It recursively scans `src/Dashcam.Remote.Control.MockDevice/Media/` for `.ts` and `.jpg` files at startup. Configure `MockDevice:MediaFolder` in the mock server's `appsettings.json` to use another absolute or project-relative folder. Files under folders named `loop`, `emr`, `event`, or `park` appear in that SD-card category; other `.ts` files appear under `loop`, and other `.jpg` files appear under `event`. The server serves the real configured file bytes. Live RTSP is not simulated.
+
+To bind one interface explicitly, pass its URL and keep port 80:
+
+```powershell
+dotnet run --project src/Dashcam.Remote.Control.MockDevice/Dashcam.Remote.Control.MockDevice.csproj -- --urls http://192.168.1.20:80
+```
+
+## Live UI editing
+
+HotAvalonia applies saved `.axaml` changes to the running app. It is enabled for Debug builds and does not require a license. Start the app from your IDE or run it from the repository root:
+
+```powershell
+dotnet run --project src/Dashcam.Remote.Control/Dashcam.Remote.Control.csproj
+```
+
 ## Tests
 
 Run the unit test suite with:

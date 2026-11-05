@@ -3,6 +3,7 @@ using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Windows.Input;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 
 namespace Dashcam.Remote
@@ -14,8 +15,11 @@ namespace Dashcam.Remote
         private readonly Func<ExplorerFileItem, bool> _canCancel;
         private bool _isDownloading;
         private bool _isDownloadStatusVisible;
+        private bool _isListViewMode;
         private double _downloadProgress;
         private string _downloadStatus = string.Empty;
+        private static readonly IBrush s_defaultDownloadStatusForeground = new SolidColorBrush(Color.Parse("#9EACBC"));
+        private static readonly IBrush s_corruptedDownloadStatusForeground = Brushes.Red;
 
         public ExplorerFileItem(
             IReadOnlyList<DeviceFile> files,
@@ -55,6 +59,18 @@ namespace Dashcam.Remote
         public IReadOnlyList<DeviceFile> Files { get; }
         public bool IsGrouped { get; }
         public bool IsPhoto { get; }
+        public bool IsListViewMode
+        {
+            get => _isListViewMode;
+            set
+            {
+                if (Set(ref _isListViewMode, value))
+                {
+                    OnPropertyChanged(nameof(IsGridViewMode));
+                }
+            }
+        }
+        public bool IsGridViewMode => !IsListViewMode;
         public string DisplayName { get; }
         public string IconPath { get; }
         public string CreatedAtText { get; }
@@ -66,6 +82,11 @@ namespace Dashcam.Remote
         {
             get
             {
+                if (IsPhoto)
+                {
+                    return $"{(Size / 1024d).ToString("0.##", CultureInfo.CurrentCulture)} KB";
+                }
+
                 var formattedSize = Humanizer.ByteSize.FromBytes(Size).ToString("0.##", CultureInfo.CurrentCulture);
                 var unitSeparator = formattedSize.LastIndexOf(' ');
                 return unitSeparator < 0 ? $"{formattedSize} MB" : $"{formattedSize[..unitSeparator]} MB";
@@ -82,7 +103,20 @@ namespace Dashcam.Remote
         public bool IsDownloadStatusVisible { get => _isDownloadStatusVisible; private set => Set(ref _isDownloadStatusVisible, value); }
         public bool CanCancelDownload => _canCancel(this);
         public double DownloadProgress { get => _downloadProgress; private set => Set(ref _downloadProgress, value); }
-        public string DownloadStatus { get => _downloadStatus; private set => Set(ref _downloadStatus, value); }
+        public string DownloadStatus
+        {
+            get => _downloadStatus;
+            private set
+            {
+                if (Set(ref _downloadStatus, value))
+                {
+                    OnPropertyChanged(nameof(DownloadStatusForeground));
+                }
+            }
+        }
+        public IBrush DownloadStatusForeground => DownloadStatus.Contains("Corrupted", StringComparison.OrdinalIgnoreCase)
+            ? s_corruptedDownloadStatusForeground
+            : s_defaultDownloadStatusForeground;
 
         public void RefreshDownloadState()
         {
@@ -305,6 +339,7 @@ namespace Dashcam.Remote
             DownloadState.Downloading when TotalBytes is > 0 => $"{BytesTransferred.ToString("N0", CultureInfo.CurrentCulture)} / {TotalBytes.Value.ToString("N0", CultureInfo.CurrentCulture)} B",
             DownloadState.Downloading => $"{BytesTransferred.ToString("N0", CultureInfo.CurrentCulture)} B",
             DownloadState.Completed => "Complete",
+            DownloadState.Corrupted => "Corrupted",
             DownloadState.Cancelled => "Cancelled",
             DownloadState.Failed => "Failed",
             _ => string.Empty
@@ -312,7 +347,7 @@ namespace Dashcam.Remote
         public double Progress => TotalBytes is > 0 ? Math.Clamp(BytesTransferred * 100d / TotalBytes.Value, 0d, 100d) : 0d;
     }
 
-    public enum DownloadState { Queued, Downloading, Completed, Cancelled, Failed }
+    public enum DownloadState { Queued, Downloading, Completed, Corrupted, Cancelled, Failed }
 
     public sealed record PreviewImageItem(string Label, Bitmap Image);
 

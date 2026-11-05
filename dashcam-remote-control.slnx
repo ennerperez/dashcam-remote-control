@@ -14,6 +14,7 @@
     <File Path="testconfig.json" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/Dashcam.Remote.Control.MockDevice/Dashcam.Remote.Control.MockDevice.csproj" />
     <Project Path="src/Dashcam.Remote.Control/Dashcam.Remote.Control.csproj" />
   </Folder>
   <Folder Name="/tests/">

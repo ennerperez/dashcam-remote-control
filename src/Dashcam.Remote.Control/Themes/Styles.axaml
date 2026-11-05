@@ -1,0 +1,144 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector="Window.app-window">
+    <Setter Property="Background" Value="{DynamicResource AppBackgroundBrush}" />
+  </Style>
+  <Style Selector="Border.panel">
+    <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource PanelBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+  <Style Selector="TextBlock.muted">
+    <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+  </Style>
+  <Style Selector="TextBlock.secondary">
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+  </Style>
+
+  <Style Selector="Window.main-window TabControl">
+    <Setter Property="Background" Value="{DynamicResource TransparentBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="Window.main-window TabItem">
+    <Setter Property="Background" Value="{DynamicResource TileBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="MinWidth" Value="145" />
+    <Setter Property="Height" Value="104" />
+    <Setter Property="Margin" Value="1,2,1,4" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="BorderBrush" Value="{DynamicResource TileBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Window.main-window TabItem:pointerover">
+    <Setter Property="Background" Value="{DynamicResource TileHoverBrush}" />
+  </Style>
+  <Style Selector="Window.main-window TabItem:selected">
+    <Setter Property="Background" Value="{DynamicResource SelectedTileBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource WhiteBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource SelectedTileBorderBrush}" />
+  </Style>
+  <Style Selector="Window.main-window TabItem.hidden-header">
+    <Setter Property="Height" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Opacity" Value="0" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+  </Style>
+  <Style Selector="Window.main-window Button">
+    <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource WhiteBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
+    <Setter Property="Padding" Value="14,9" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+  <Style Selector="Window.main-window Button:pointerover">
+    <Setter Property="Background" Value="{DynamicResource ButtonHoverBrush}" />
+  </Style>
+  <Style Selector="Window.main-window Button:pressed">
+    <Setter Property="Background" Value="{DynamicResource ButtonPressedBrush}" />
+  </Style>
+  <Style Selector="Window.main-window Button.navTile">
+    <Setter Property="Background" Value="{DynamicResource TileBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextBrightBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource TileBorderBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Padding" Value="5,4" />
+    <Setter Property="Width" Value="78" />
+    <Setter Property="Height" Value="68" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Window.main-window Button.navTile:pointerover">
+    <Setter Property="Background" Value="{DynamicResource TileHoverBrush}" />
+  </Style>
+  <Style Selector="Window.main-window Button.navTile.active">
+    <Setter Property="Background" Value="{DynamicResource SelectedTileBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ActiveTileBorderBrush}" />
+  </Style>
+  <Style Selector="Window.main-window Button.navTile:disabled">
+    <Setter Property="Background" Value="{DynamicResource DisabledTileBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource DisabledTextBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource DisabledBorderBrush}" />
+  </Style>
+  <Style Selector="Window.main-window Button.connectionAction.connect">
+    <Setter Property="Background" Value="{DynamicResource TileHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource WhiteBrush}" />
+  </Style>
+  <Style Selector="Window.main-window Button.connectionAction.cancel, Window.main-window Button.connectionAction.close">
+    <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource WhiteBrush}" />
+  </Style>
+  <Style Selector="Window.main-window Button.connectionAction.cancel:pointerover, Window.main-window Button.connectionAction.close:pointerover">
+    <Setter Property="Background" Value="{DynamicResource DangerHoverBrush}" />
+  </Style>
+  <Style Selector="Window.main-window Button.connectionAction.cancel:pressed, Window.main-window Button.connectionAction.close:pressed">
+    <Setter Property="Background" Value="{DynamicResource DangerPressedBrush}" />
+  </Style>
+  <Style Selector="Window.main-window Button.copyCard">
+    <Setter Property="Background" Value="{DynamicResource TransparentBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="MinHeight" Value="82" />
+  </Style>
+  <Style Selector="Window.main-window Button.copyCard:pointerover">
+    <Setter Property="Opacity" Value="0.86" />
+  </Style>
+  <Style Selector="Window.main-window TextBox">
+    <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextInputBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource InputBorderBrush}" />
+  </Style>
+  <Style Selector="Window.main-window ComboBox">
+    <Setter Property="Background" Value="{DynamicResource InputBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextInputBrush}" />
+  </Style>
+
+  <Style Selector="Window.media-player-window Button.camera">
+    <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource WhiteBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+  <Style Selector="Window.media-player-window Button.camera.active">
+    <Setter Property="Background" Value="{DynamicResource TileHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+  </Style>
+    <!-- debug -->
+    <Style Selector="Border.debug">
+        <Setter Property="BorderBrush" Value="Red" />
+    </Style>
+    <!-- debug -->
+</Styles>
