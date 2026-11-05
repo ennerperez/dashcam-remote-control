@@ -10,6 +10,7 @@
 | Architecture | MVVM with Avalonia data bindings |
 | Video playback | LibVLCSharp 3.10.2, LibVLC 3.0.24 |
 | File size formatting | Humanizer.Core 3.0.10 |
+| Mock dashcam API | .NET 10 console app with ASP.NET Core minimal APIs |
 | Target | Windows x64 |
 | Application name | Dashcam Remote Control (`Dashcam.Remote.Control`) |
 
@@ -32,6 +33,7 @@ Keep device HTTP behavior in the service layer. Keep view code-behind for lifecy
 - Default address: `192.168.169.1`; the address remains configurable in the connection panel.
 - Metadata requests are serialized and spaced. File transfers use a separate queue with at most five concurrent downloads.
 - API traffic uses plain HTTP. USB drivers are not used.
+- `src/Dashcam.Remote.Control.MockDevice/` simulates the device API for local app development. It listens on HTTP port 80, reads `.ts` and `.jpg` files recursively from the `MockDevice:MediaFolder` setting in `appsettings.json`, and serves their actual bytes. It does not provide an RTSP stream.
 
 ## File explorer and downloads
 
@@ -47,6 +49,7 @@ Video playback uses LibVLCSharp. GPS telemetry is read from LigoGPS records embe
 
 ```text
 src/Dashcam.Remote.Control/  Application source and project file
+src/Dashcam.Remote.Control.MockDevice/  Local HTTP device simulator
 tests/UnitTests/             xUnit tests
 docs/                        Project documentation
 dashcam-remote-control.slnx  Solution
