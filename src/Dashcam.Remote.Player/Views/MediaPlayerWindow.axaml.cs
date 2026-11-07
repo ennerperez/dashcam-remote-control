@@ -36,6 +36,7 @@ namespace Dashcam.Remote.Player
             Closed += OnClosed;
             Opened += OnOpened;
             VideoSurface.Loaded += OnVideoSurfaceLoaded;
+            RearVideoSurface.Loaded += OnRearVideoSurfaceLoaded;
         }
 
         public int MediaCount => _mediaPlayers.Count;
@@ -121,6 +122,7 @@ namespace Dashcam.Remote.Player
                 _mediaUris = nextUris;
                 var existingPlayerCount = _mediaPlayers.Count;
                 VideoSurface.MediaPlayer = null;
+                RearVideoSurface.MediaPlayer = null;
                 EnsurePlayerCount(nextUris.Length, nextUris);
                 _viewModel.UpdateMediaTitle(_mediaUris);
                 for (var index = 0; index < Math.Min(existingPlayerCount, nextUris.Length); index++)
@@ -140,7 +142,14 @@ namespace Dashcam.Remote.Player
             if (_viewReady)
             {
                 AttachSelectedPlayerToVideoSurface();
-                QueueSelectedCameraStart(_activeCameraIndex);
+                if (_viewModel.IsSideBySide)
+                {
+                    QueueSideBySideStart();
+                }
+                else
+                {
+                    QueueSelectedCameraStart(_activeCameraIndex);
+                }
             }
 
             if (!HasSameFiles(previousUris, _mediaUris))
@@ -193,7 +202,14 @@ namespace Dashcam.Remote.Player
         {
             _viewReady = true;
             AttachSelectedPlayerToVideoSurface();
-            QueueSelectedCameraStart(_viewModel?.SelectedCameraIndex ?? 0);
+            if (_viewModel?.IsSideBySide == true)
+            {
+                QueueSideBySideStart();
+            }
+            else
+            {
+                QueueSelectedCameraStart(_viewModel?.SelectedCameraIndex ?? 0);
+            }
             _ = TryLoadSiblingGpsTrackAsync();
         }
 
@@ -202,7 +218,23 @@ namespace Dashcam.Remote.Player
             AttachSelectedPlayerToVideoSurface();
             if (_viewReady)
             {
-                QueueSelectedCameraStart(_viewModel?.SelectedCameraIndex ?? 0);
+                if (_viewModel?.IsSideBySide == true)
+                {
+                    QueueSideBySideStart();
+                }
+                else
+                {
+                    QueueSelectedCameraStart(_viewModel?.SelectedCameraIndex ?? 0);
+                }
+            }
+        }
+
+        private void OnRearVideoSurfaceLoaded(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs)
+        {
+            if (_viewModel?.IsSideBySide == true)
+            {
+                AttachSelectedPlayerToVideoSurface();
+                QueueSideBySideStart();
             }
         }
 
@@ -213,6 +245,18 @@ namespace Dashcam.Remote.Player
                 return;
             }
 
+            if (_viewModel.IsSideBySide && _mediaPlayers.Count > 1)
+            {
+                Grid.SetColumnSpan(VideoSurface, 1);
+                VideoSurface.MediaPlayer = null;
+                RearVideoSurface.MediaPlayer = null;
+                VideoSurface.MediaPlayer = _mediaPlayers[0];
+                RearVideoSurface.MediaPlayer = _mediaPlayers[1];
+                return;
+            }
+
+            Grid.SetColumnSpan(VideoSurface, 2);
+            RearVideoSurface.MediaPlayer = null;
             var player = _viewModel.ActiveMediaPlayer;
             if (ReferenceEquals(VideoSurface.MediaPlayer, player) && player.Hwnd != IntPtr.Zero)
             {
@@ -221,6 +265,101 @@ namespace Dashcam.Remote.Player
 
             VideoSurface.MediaPlayer = null;
             VideoSurface.MediaPlayer = player;
+        }
+
+        private void QueueSideBySideStart()
+        {
+            if (_mediaPlayers.Count < 2 || _viewModel?.IsSideBySide != true)
+            {
+                return;
+            }
+
+            _playbackStartCancellation?.Cancel();
+            _playbackStartCancellation?.Dispose();
+            _playbackStartCancellation = new CancellationTokenSource();
+            _ = StartSideBySideAfterHostReadyAsync(_playbackStartCancellation.Token);
+        }
+
+        private async Task StartSideBySideAfterHostReadyAsync(CancellationToken cancellationToken)
+        {
+            if (!_viewReady || _viewModel?.IsSideBySide != true || _mediaPlayers.Count < 2)
+            {
+                return;
+            }
+
+            try
+            {
+                for (var attempt = 0; attempt < 20; attempt++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var started = await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        if (_viewModel?.IsSideBySide != true || _mediaPlayers.Count < 2 ||
+                            VideoSurface.MediaPlayer != _mediaPlayers[0] ||
+                            RearVideoSurface.MediaPlayer != _mediaPlayers[1] ||
+                            _mediaPlayers[0].Hwnd == IntPtr.Zero || _mediaPlayers[1].Hwnd == IntPtr.Zero)
+                        {
+                            return false;
+                        }
+
+                        if (!_mediaPlayers[0].IsPlaying && !_mediaPlayers[0].Play())
+                        {
+                            _viewModel.SetPlaybackStatus("Unable to start front camera playback.");
+                        }
+
+                        if (!_mediaPlayers[1].IsPlaying && !_mediaPlayers[1].Play())
+                        {
+                            _viewModel.SetPlaybackStatus("Unable to start rear camera playback.");
+                        }
+
+                        return true;
+                    }, DispatcherPriority.Render);
+                    if (started)
+                    {
+                        return;
+                    }
+
+                    await Task.Delay(50, cancellationToken);
+                }
+
+                _viewModel.SetPlaybackStatus("Video surfaces did not initialize.");
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+            catch (Exception exception)
+            {
+                ReportStatus($"Playback error: {exception.Message}");
+            }
+        }
+
+        private void ApplySideBySideMode()
+        {
+            if (_isReplacingMedia || _viewModel is null)
+            {
+                return;
+            }
+
+            _pendingCameraPositionMs = null;
+            _pendingCameraIndex = -1;
+            if (_viewModel.IsSideBySide && _mediaPlayers.Count > 1)
+            {
+                AttachSelectedPlayerToVideoSurface();
+                QueueSideBySideStart();
+                return;
+            }
+
+            if (_mediaPlayers.Count > 1)
+            {
+                for (var index = 0; index < _mediaPlayers.Count; index++)
+                {
+                    if (index != _viewModel.SelectedCameraIndex)
+                    {
+                        _mediaPlayers[index].Stop();
+                    }
+                }
+            }
+
+            AttachSelectedPlayerToVideoSurface();
+            QueueSelectedCameraStart(_viewModel.SelectedCameraIndex);
         }
 
         private void QueueSelectedCameraStart(int cameraIndex)
@@ -427,11 +566,15 @@ namespace Dashcam.Remote.Player
             {
                 SwitchCamera();
             }
+            else if (eventArgs.PropertyName == nameof(PlaybackViewModel.IsSideBySide))
+            {
+                ApplySideBySideMode();
+            }
         }
 
         private void SwitchCamera()
         {
-            if (!_viewReady || _isReplacingMedia || _viewModel is null)
+            if (!_viewReady || _isReplacingMedia || _viewModel is null || _viewModel.IsSideBySide)
             {
                 return;
             }
@@ -656,6 +799,7 @@ namespace Dashcam.Remote.Player
             }
 
             VideoSurface.MediaPlayer = null;
+            RearVideoSurface.MediaPlayer = null;
         }
 
         private void OnClosed(object? sender, EventArgs eventArgs)

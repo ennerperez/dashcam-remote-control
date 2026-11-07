@@ -37,6 +37,7 @@ namespace Dashcam.Remote.Player
         private bool _isMuted;
         private bool _hasGpsTrack;
         private bool _isPlaylistOpen;
+        private bool _isSideBySide;
         private long? _clipStartTimeMs;
         private long? _clipEndTimeMs;
         private int _selectedPlaylistIndex;
@@ -56,6 +57,7 @@ namespace Dashcam.Remote.Player
             ToggleMuteCommand = new PlayerRelayCommand(_ => ToggleMute());
             SelectCameraCommand = new PlayerRelayCommand(value => SelectCamera(value), _ => HasRearCamera);
             ToggleFullscreenCommand = new PlayerRelayCommand(_ => FullscreenRequested?.Invoke());
+            ToggleSideBySideCommand = new PlayerRelayCommand(_ => IsSideBySide = !IsSideBySide, _ => HasRearCamera);
             TogglePlaylistCommand = new PlayerRelayCommand(_ => IsPlaylistOpen = !IsPlaylistOpen);
             PreviousVideoCommand = new PlayerRelayCommand(_ => SelectPlaylistEntry(_selectedPlaylistIndex - 1), _ => _selectedPlaylistIndex > 0);
             NextVideoCommand = new PlayerRelayCommand(_ => SelectPlaylistEntry(_selectedPlaylistIndex + 1), _ => _selectedPlaylistIndex >= 0 && _selectedPlaylistIndex < _playlistEntries.Count - 1);
@@ -89,6 +91,7 @@ namespace Dashcam.Remote.Player
         public ICommand ToggleMuteCommand { get; }
         public ICommand SelectCameraCommand { get; }
         public ICommand ToggleFullscreenCommand { get; }
+        public ICommand ToggleSideBySideCommand { get; }
         public ICommand TogglePlaylistCommand { get; }
         public ICommand PreviousVideoCommand { get; }
         public ICommand NextVideoCommand { get; }
@@ -187,6 +190,23 @@ namespace Dashcam.Remote.Player
             }
         }
         public bool HasRearCamera => _players.Count > 1;
+        public bool IsSideBySide
+        {
+            get => _isSideBySide;
+            private set
+            {
+                if (value && !HasRearCamera)
+                {
+                    return;
+                }
+
+                if (Set(ref _isSideBySide, value))
+                {
+                    OnPropertyChanged(nameof(SideBySideButtonLabel));
+                }
+            }
+        }
+        public string SideBySideButtonLabel => IsSideBySide ? "Single view" : "Side by side";
         public int SelectedCameraIndex
         {
             get => _selectedCameraIndex;
@@ -315,6 +335,11 @@ namespace Dashcam.Remote.Player
                 : null;
             SelectedCameraIndex = 0;
             OnPropertyChanged(nameof(HasRearCamera));
+            ((PlayerRelayCommand)ToggleSideBySideCommand).RaiseCanExecuteChanged();
+            if (!HasRearCamera)
+            {
+                IsSideBySide = false;
+            }
             ((PlayerRelayCommand)SelectCameraCommand).RaiseCanExecuteChanged();
             Zoom = 1;
             _gpsPoints = [];
@@ -540,7 +565,27 @@ namespace Dashcam.Remote.Player
         private void TogglePlayback()
         {
             var player = _players[Math.Clamp(SelectedCameraIndex, 0, _players.Count - 1)];
-            if (player.IsPlaying)
+            if (IsSideBySide)
+            {
+                if (_players.Any(item => item.IsPlaying))
+                {
+                    foreach (var mediaPlayer in _players)
+                    {
+                        mediaPlayer.Pause();
+                    }
+                }
+                else
+                {
+                    foreach (var mediaPlayer in _players)
+                    {
+                        if (!mediaPlayer.Play())
+                        {
+                            PlaybackStatus = "Unable to play this file.";
+                        }
+                    }
+                }
+            }
+            else if (player.IsPlaying)
             {
                 player.Pause();
             }
@@ -581,7 +626,18 @@ namespace Dashcam.Remote.Player
 
             var player = _players[Math.Clamp(SelectedCameraIndex, 0, _players.Count - 1)];
             var duration = Math.Max(0, player.Length);
-            player.Time = Math.Clamp(player.Time + (long)offset.TotalMilliseconds, 0, duration);
+            var time = Math.Clamp(player.Time + (long)offset.TotalMilliseconds, 0, duration);
+            if (IsSideBySide)
+            {
+                foreach (var mediaPlayer in _players)
+                {
+                    mediaPlayer.Time = Math.Clamp(time, 0, Math.Max(0, mediaPlayer.Length));
+                }
+            }
+            else
+            {
+                player.Time = time;
+            }
             RefreshPlaybackState();
         }
 
