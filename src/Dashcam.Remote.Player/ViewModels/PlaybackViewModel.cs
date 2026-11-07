@@ -12,7 +12,7 @@ namespace Dashcam.Remote.Player
     public sealed class PlaybackViewModel : INotifyPropertyChanged, IDisposable
     {
         private readonly IReadOnlyList<MediaPlayer> _players;
-        private readonly IReadOnlyList<Uri> _playlistUris;
+        private readonly IReadOnlyList<PlayerPlaylistEntry> _playlistEntries;
         private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
         private IReadOnlyList<GpsPoint> _gpsPoints = [];
         private DateTimeOffset? _gpsRecordingStart;
@@ -45,7 +45,7 @@ namespace Dashcam.Remote.Player
         public PlaybackViewModel(IReadOnlyList<MediaPlayer> players, IReadOnlyList<Uri> mediaUris, IReadOnlyList<Uri>? playlistUris = null)
         {
             _players = players;
-            _playlistUris = playlistUris ?? mediaUris;
+            _playlistEntries = PlayerPlaylistGrouping.Group(playlistUris ?? mediaUris);
             UpdateMediaTitle(mediaUris);
             TogglePlaybackCommand = new PlayerRelayCommand(_ => TogglePlayback());
             StopPlaybackCommand = new PlayerRelayCommand(_ => StopPlayback());
@@ -86,7 +86,7 @@ namespace Dashcam.Remote.Player
         public ICommand ExportSpeedChartPngCommand { get; }
         public ICommand ExportSpeedCsvCommand { get; }
 
-        public IReadOnlyList<Uri> PlaylistUris => _playlistUris;
+        public IReadOnlyList<PlayerPlaylistEntry> PlaylistEntries => _playlistEntries;
 
         public bool IsPlaylistOpen
         {

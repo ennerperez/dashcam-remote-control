@@ -19,7 +19,7 @@
     <Border Grid.Column="0" Grid.RowSpan="3" Width="260" IsVisible="{Binding IsPlaylistOpen}" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" Padding="10">
       <Grid RowDefinitions="Auto,*" RowSpacing="8">
         <TextBlock Text="Videos" FontSize="15" FontWeight="SemiBold" />
-        <ListBox Grid.Row="1" ItemsSource="{Binding PlaylistUris}" />
+        <ListBox Grid.Row="1" ItemsSource="{Binding PlaylistEntries}" />
       </Grid>
     </Border>
     <Grid x:Name="VideoAndMapGrid" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" ColumnDefinitions="2.1*,1*" ColumnSpacing="10">
