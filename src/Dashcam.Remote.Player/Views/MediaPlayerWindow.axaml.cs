@@ -5,14 +5,16 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using LibVLCSharp.Shared;
+using Dashcam.Remote;
 
-namespace Dashcam.Remote
+namespace Dashcam.Remote.Player
 {
     public partial class MediaPlayerWindow : Window
     {
         private Window? _owner;
         private LibVLC? _libVlc;
         private readonly List<MediaPlayer> _mediaPlayers = [];
+        private readonly Action<IReadOnlyList<Uri>>? _deleteCachedMedia;
         private PlaybackViewModel? _viewModel;
         private readonly List<Media> _currentMedia = [];
         private Uri[] _mediaUris = [];
@@ -37,9 +39,10 @@ namespace Dashcam.Remote
 
         public int MediaCount => _mediaPlayers.Count;
 
-        public MediaPlayerWindow(Window owner, IReadOnlyList<Uri> mediaUris) : this()
+        public MediaPlayerWindow(Window owner, IReadOnlyList<Uri> mediaUris, Action<IReadOnlyList<Uri>>? deleteCachedMedia = null) : this()
         {
             _owner = owner;
+            _deleteCachedMedia = deleteCachedMedia;
             _mediaUris = mediaUris.Take(2).ToArray();
             if (_mediaUris.Length == 0)
             {
@@ -71,15 +74,15 @@ namespace Dashcam.Remote
             _viewModel.FullscreenRequested += ToggleFullscreen;
             _viewModel.CameraSelectionChanged += index => _ = TryLoadSiblingGpsTrackAsync(index);
             _viewModel.PropertyChanged += ViewModelOnPropertyChanged;
-            ((AsyncCommand)_viewModel.ExportGpsCommand).Failed += exception => ReportStatus($"GPX export failed: {exception.Message}");
-            ((AsyncCommand)_viewModel.ExportMp4Command).Failed += exception => ReportStatus($"MP4 export failed: {exception.Message}");
-            ((AsyncCommand)_viewModel.ExportRoutePngCommand).Failed += exception => ReportStatus($"Route PNG export failed: {exception.Message}");
-            ((AsyncCommand)_viewModel.ExportSpeedChartPngCommand).Failed += exception => ReportStatus($"Speed chart PNG export failed: {exception.Message}");
-            ((AsyncCommand)_viewModel.ExportSpeedCsvCommand).Failed += exception => ReportStatus($"Speed data CSV export failed: {exception.Message}");
-            ((AsyncCommand)_viewModel.ExportMp4Command).RaiseCanExecuteChanged();
-            ((AsyncCommand)_viewModel.ExportRoutePngCommand).RaiseCanExecuteChanged();
-            ((AsyncCommand)_viewModel.ExportSpeedChartPngCommand).RaiseCanExecuteChanged();
-            ((AsyncCommand)_viewModel.ExportSpeedCsvCommand).RaiseCanExecuteChanged();
+            ((PlayerAsyncCommand)_viewModel.ExportGpsCommand).Failed += exception => ReportStatus($"GPX export failed: {exception.Message}");
+            ((PlayerAsyncCommand)_viewModel.ExportMp4Command).Failed += exception => ReportStatus($"MP4 export failed: {exception.Message}");
+            ((PlayerAsyncCommand)_viewModel.ExportRoutePngCommand).Failed += exception => ReportStatus($"Route PNG export failed: {exception.Message}");
+            ((PlayerAsyncCommand)_viewModel.ExportSpeedChartPngCommand).Failed += exception => ReportStatus($"Speed chart PNG export failed: {exception.Message}");
+            ((PlayerAsyncCommand)_viewModel.ExportSpeedCsvCommand).Failed += exception => ReportStatus($"Speed data CSV export failed: {exception.Message}");
+            ((PlayerAsyncCommand)_viewModel.ExportMp4Command).RaiseCanExecuteChanged();
+            ((PlayerAsyncCommand)_viewModel.ExportRoutePngCommand).RaiseCanExecuteChanged();
+            ((PlayerAsyncCommand)_viewModel.ExportSpeedChartPngCommand).RaiseCanExecuteChanged();
+            ((PlayerAsyncCommand)_viewModel.ExportSpeedCsvCommand).RaiseCanExecuteChanged();
             DataContext = _viewModel;
             Owner = owner;
             UpdateOwnerSizeConstraints(initial: true);
@@ -129,7 +132,7 @@ namespace Dashcam.Remote
 
             if (!HasSameFiles(previousUris, _mediaUris))
             {
-                PlaybackMediaCache.DeleteForMediaUris(previousUris);
+                _deleteCachedMedia?.Invoke(previousUris);
             }
 
             if (_viewReady)
@@ -622,7 +625,7 @@ namespace Dashcam.Remote
             }
 
             _libVlc?.Dispose();
-            try { PlaybackMediaCache.DeleteForMediaUris(_mediaUris); }
+            try { _deleteCachedMedia?.Invoke(_mediaUris); }
             catch (IOException) { }
             catch (UnauthorizedAccessException) { }
         }

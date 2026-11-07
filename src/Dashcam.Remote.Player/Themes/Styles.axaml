@@ -1,0 +1,13 @@
+<Styles xmlns="https://github.com/avaloniaui">
+  <Style Selector="Window.media-player-window Button.camera">
+    <Setter Property="Background" Value="{DynamicResource ButtonBackgroundBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource WhiteBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="CornerRadius" Value="4" />
+  </Style>
+  <Style Selector="Window.media-player-window Button.camera.active">
+    <Setter Property="Background" Value="{DynamicResource TileHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+  </Style>
+</Styles>

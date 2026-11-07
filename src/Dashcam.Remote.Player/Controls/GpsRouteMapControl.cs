@@ -6,8 +6,9 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
+using Dashcam.Remote;
 
-namespace Dashcam.Remote
+namespace Dashcam.Remote.Player
 {
     public sealed class GpsRouteMapControl : Control
     {

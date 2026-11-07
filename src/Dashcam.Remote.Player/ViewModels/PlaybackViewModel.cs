@@ -5,8 +5,9 @@ using System.Text.Json;
 using System.Windows.Input;
 using Avalonia.Threading;
 using LibVLCSharp.Shared;
+using Dashcam.Remote;
 
-namespace Dashcam.Remote
+namespace Dashcam.Remote.Player
 {
     public sealed class PlaybackViewModel : INotifyPropertyChanged, IDisposable
     {
@@ -43,18 +44,18 @@ namespace Dashcam.Remote
         {
             _players = players;
             UpdateMediaTitle(mediaUris);
-            TogglePlaybackCommand = new RelayCommand(_ => TogglePlayback());
-            StopPlaybackCommand = new RelayCommand(_ => StopPlayback());
-            SeekBackwardCommand = new RelayCommand(_ => SeekBy(TimeSpan.FromSeconds(-10)), _ => CanSeek);
-            SeekForwardCommand = new RelayCommand(_ => SeekBy(TimeSpan.FromSeconds(10)), _ => CanSeek);
-            ToggleMuteCommand = new RelayCommand(_ => ToggleMute());
-            SelectCameraCommand = new RelayCommand(value => SelectCamera(value), _ => HasRearCamera);
-            ToggleFullscreenCommand = new RelayCommand(_ => FullscreenRequested?.Invoke());
-            ExportGpsCommand = new AsyncCommand(ExportGpsAsync, () => HasGpsTrack);
-            ExportMp4Command = new AsyncCommand(ExportMp4Async, () => ExportCurrentVideoRequested is not null);
-            ExportRoutePngCommand = new AsyncCommand(ExportRoutePngAsync, () => HasGpsTrack);
-            ExportSpeedChartPngCommand = new AsyncCommand(ExportSpeedChartPngAsync, () => HasGpsTrack);
-            ExportSpeedCsvCommand = new AsyncCommand(ExportSpeedCsvAsync, () => HasGpsTrack);
+            TogglePlaybackCommand = new PlayerRelayCommand(_ => TogglePlayback());
+            StopPlaybackCommand = new PlayerRelayCommand(_ => StopPlayback());
+            SeekBackwardCommand = new PlayerRelayCommand(_ => SeekBy(TimeSpan.FromSeconds(-10)), _ => CanSeek);
+            SeekForwardCommand = new PlayerRelayCommand(_ => SeekBy(TimeSpan.FromSeconds(10)), _ => CanSeek);
+            ToggleMuteCommand = new PlayerRelayCommand(_ => ToggleMute());
+            SelectCameraCommand = new PlayerRelayCommand(value => SelectCamera(value), _ => HasRearCamera);
+            ToggleFullscreenCommand = new PlayerRelayCommand(_ => FullscreenRequested?.Invoke());
+            ExportGpsCommand = new PlayerAsyncCommand(ExportGpsAsync, () => HasGpsTrack);
+            ExportMp4Command = new PlayerAsyncCommand(ExportMp4Async, () => ExportCurrentVideoRequested is not null);
+            ExportRoutePngCommand = new PlayerAsyncCommand(ExportRoutePngAsync, () => HasGpsTrack);
+            ExportSpeedChartPngCommand = new PlayerAsyncCommand(ExportSpeedChartPngAsync, () => HasGpsTrack);
+            ExportSpeedCsvCommand = new PlayerAsyncCommand(ExportSpeedCsvAsync, () => HasGpsTrack);
             _progressTimer.Tick += (_, _) => RefreshPlaybackState();
             _progressTimer.Start();
         }
@@ -127,10 +128,10 @@ namespace Dashcam.Remote
                     return;
                 }
 
-                ((AsyncCommand)ExportGpsCommand).RaiseCanExecuteChanged();
-                ((AsyncCommand)ExportRoutePngCommand).RaiseCanExecuteChanged();
-                ((AsyncCommand)ExportSpeedChartPngCommand).RaiseCanExecuteChanged();
-                ((AsyncCommand)ExportSpeedCsvCommand).RaiseCanExecuteChanged();
+                ((PlayerAsyncCommand)ExportGpsCommand).RaiseCanExecuteChanged();
+                ((PlayerAsyncCommand)ExportRoutePngCommand).RaiseCanExecuteChanged();
+                ((PlayerAsyncCommand)ExportSpeedChartPngCommand).RaiseCanExecuteChanged();
+                ((PlayerAsyncCommand)ExportSpeedCsvCommand).RaiseCanExecuteChanged();
                 OnPropertyChanged(nameof(GpsRouteJson));
                 OnPropertyChanged(nameof(GpsCurrentPointJson));
                 OnPropertyChanged(nameof(GpsPoints));
@@ -204,8 +205,8 @@ namespace Dashcam.Remote
                     return;
                 }
 
-                ((RelayCommand)SeekBackwardCommand).RaiseCanExecuteChanged();
-                ((RelayCommand)SeekForwardCommand).RaiseCanExecuteChanged();
+                ((PlayerRelayCommand)SeekBackwardCommand).RaiseCanExecuteChanged();
+                ((PlayerRelayCommand)SeekForwardCommand).RaiseCanExecuteChanged();
             }
         }
         public double Position

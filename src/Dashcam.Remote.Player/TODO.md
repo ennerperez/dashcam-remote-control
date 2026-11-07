@@ -1,0 +1,16 @@
+# Pendientes
+- [ ] Al lanzar el player este debe mostrar un splash screen
+- [ ] Luego debe mostrar una ventana para seleccionar la carpeta para abrir
+- [ ] El player debe mostrar un botón para desplegar la lista de videos
+  - [ ] La lista de videos debe mostrar los videos como se ven en el explorer agrupados por dupla F+B
+  - [ ] La lista de videos debe mostrar los videos con su nombre y fecha de creación
+  - [ ] La lista de videos sale como un panel a la izquierda y se oculta con el mismo botón
+- [ ] El player debe mostrar 2 botones de anterior y siguiente en los controles de reproducción
+- [ ] Automáticamente, detecta si este tiene un par back+front
+- [ ] El player debe mostrar un botón para hacer clip, este debe permitir seleccionar un fragmento del video para exportarlo
+- [ ] El player debe mostrar un botón para ver side by side front y back si estos están disponibles
+- [ ] Si el video no tiene un back/front, pero si un front/back, no salen los botones de side by side ni de cambiar a front/back
+- [ ] Si el video termina en _B es back, entonces arriba de en el título debe decir Rear view
+  - [ ] Actualmente, dice Front View y sale el botón abajo que dice Front aunque no existe tal video
+- [ ] Si el video termina en _F es front, entonces arriba de en el título debe decir Front view
+- [ ] El player abajo a la izquierda dice "Paused"/"Playing"/"Stopped" elimina eso, no es necesario

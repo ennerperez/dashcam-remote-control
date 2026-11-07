@@ -5,7 +5,7 @@
     <Product>Dashcam Remote Control</Product>
     <AssemblyName>Dashcam.Remote.Control</AssemblyName>
     <RootNamespace>Dashcam.Remote</RootNamespace>
-    <ApplicationIcon>Assets\Icons\dashcam-remote-control.ico</ApplicationIcon>
+    <ApplicationIcon>..\Dashcam.Remote.Shared\Assets\Icons\dashcam-remote-control.ico</ApplicationIcon>
     <Version>1.0.0</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
@@ -22,8 +22,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <AvaloniaResource Include="Assets\Icons\*.svg" />
-    <AvaloniaResource Include="Assets\Icons\dashcam-remote-control.ico" />
+    <ProjectReference Include="..\Dashcam.Remote.Player\Dashcam.Remote.Player.csproj" />
+    <ProjectReference Include="..\Dashcam.Remote.Shared\Dashcam.Remote.Shared.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.4" />

@@ -2,8 +2,9 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Dashcam.Remote;
 
-namespace Dashcam.Remote
+namespace Dashcam.Remote.Player
 {
     public sealed class SpeedDistributionChart : Control
     {

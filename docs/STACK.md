@@ -9,20 +9,23 @@
 | Desktop UI | Avalonia 12.1.4 with Fluent theme |
 | Architecture | MVVM with Avalonia data bindings |
 | Video playback | LibVLCSharp 3.10.2, LibVLC 3.0.24 |
+| Player project | `Dashcam.Remote.Player`, an Avalonia class library referenced by the desktop app |
+| Shared UI project | `Dashcam.Remote.Shared`, common Avalonia icons, palette, and styles |
 | File size formatting | Humanizer.Core 3.0.10 |
 | Mock dashcam API | .NET 10 console app with ASP.NET Core minimal APIs |
 | Target | Windows x64 |
 | Application name | Dashcam Remote Control (`Dashcam.Remote.Control`) |
 
-The Windows application and window icon is `src/Dashcam.Remote.Control/Assets/Icons/dashcam-remote-control.ico`, derived from the repository icon `.editoricon.png`.
+The Windows application and window icon is `src/Dashcam.Remote.Shared/Assets/Icons/dashcam-remote-control.ico`, derived from the repository icon `.editoricon.png`.
 
 ## Architecture
 
-- `Views/` contains Avalonia windows and AXAML.
-- `ViewModels/` owns UI state, commands, and coordination.
-- `Models/` contains device, file explorer, and GPS data types.
-- `Services/` contains device HTTP and playback logic.
-- `Controls/` contains custom map and chart controls.
+- `Dashcam.Remote.Player` contains the playback window, playback view model, GPS track parsing, and player controls.
+- `Dashcam.Remote.Shared` owns icons, palette colors, and common Avalonia styles used by the app and player.
+- `Dashcam.Remote.Control/Views/` contains the main Avalonia windows and AXAML.
+- `Dashcam.Remote.Control/ViewModels/` owns app UI state, commands, and coordination.
+- `Dashcam.Remote.Control/Models/` contains device and file explorer data types.
+- `Dashcam.Remote.Control/Services/` contains device HTTP and playback media cache logic.
 
 Keep device HTTP behavior in the service layer. Keep view code-behind for lifecycle and native-control integration. Preserve the `Dashcam.Remote` namespace.
 
@@ -48,7 +51,9 @@ Video playback uses LibVLCSharp. GPS telemetry is read from LigoGPS records embe
 ## Repository layout
 
 ```text
-src/Dashcam.Remote.Control/  Application source and project file
+src/Dashcam.Remote.Control/  Desktop application source and project file
+src/Dashcam.Remote.Player/  Reusable Avalonia playback library
+src/Dashcam.Remote.Shared/  Shared UI resources and theme
 src/Dashcam.Remote.Control.MockDevice/  Local HTTP device simulator
 tests/UnitTests/             xUnit tests
 docs/                        Project documentation
