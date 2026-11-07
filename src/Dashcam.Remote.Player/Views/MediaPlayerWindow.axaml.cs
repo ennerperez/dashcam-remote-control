@@ -72,6 +72,7 @@ namespace Dashcam.Remote.Player
             _viewModel.ExportSpeedChartPngRequested = ExportSpeedChartAsPngAsync;
             _viewModel.ExportSpeedCsvRequested = ExportSpeedDataAsCsvAsync;
             _viewModel.FullscreenRequested += ToggleFullscreen;
+            _viewModel.PlaylistEntryRequested += entry => Play([entry.MediaUris[0]]);
             _viewModel.CameraSelectionChanged += index => _ = TryLoadSiblingGpsTrackAsync(index);
             _viewModel.PropertyChanged += ViewModelOnPropertyChanged;
             ((PlayerAsyncCommand)_viewModel.ExportGpsCommand).Failed += exception => ReportStatus($"GPX export failed: {exception.Message}");

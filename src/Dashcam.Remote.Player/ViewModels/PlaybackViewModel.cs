@@ -37,6 +37,7 @@ namespace Dashcam.Remote.Player
         private bool _isMuted;
         private bool _hasGpsTrack;
         private bool _isPlaylistOpen;
+        private int _selectedPlaylistIndex;
         private int _selectedCameraIndex;
         private double _zoom = 1;
         private double _position;
@@ -46,7 +47,6 @@ namespace Dashcam.Remote.Player
         {
             _players = players;
             _playlistEntries = PlayerPlaylistGrouping.Group(playlistUris ?? mediaUris);
-            UpdateMediaTitle(mediaUris);
             TogglePlaybackCommand = new PlayerRelayCommand(_ => TogglePlayback());
             StopPlaybackCommand = new PlayerRelayCommand(_ => StopPlayback());
             SeekBackwardCommand = new PlayerRelayCommand(_ => SeekBy(TimeSpan.FromSeconds(-10)), _ => CanSeek);
@@ -55,6 +55,8 @@ namespace Dashcam.Remote.Player
             SelectCameraCommand = new PlayerRelayCommand(value => SelectCamera(value), _ => HasRearCamera);
             ToggleFullscreenCommand = new PlayerRelayCommand(_ => FullscreenRequested?.Invoke());
             TogglePlaylistCommand = new PlayerRelayCommand(_ => IsPlaylistOpen = !IsPlaylistOpen);
+            PreviousVideoCommand = new PlayerRelayCommand(_ => SelectPlaylistEntry(_selectedPlaylistIndex - 1), _ => _selectedPlaylistIndex > 0);
+            NextVideoCommand = new PlayerRelayCommand(_ => SelectPlaylistEntry(_selectedPlaylistIndex + 1), _ => _selectedPlaylistIndex >= 0 && _selectedPlaylistIndex < _playlistEntries.Count - 1);
             ExportGpsCommand = new PlayerAsyncCommand(ExportGpsAsync, () => HasGpsTrack);
             ExportMp4Command = new PlayerAsyncCommand(ExportMp4Async, () => ExportCurrentVideoRequested is not null);
             ExportRoutePngCommand = new PlayerAsyncCommand(ExportRoutePngAsync, () => HasGpsTrack);
@@ -62,11 +64,13 @@ namespace Dashcam.Remote.Player
             ExportSpeedCsvCommand = new PlayerAsyncCommand(ExportSpeedCsvAsync, () => HasGpsTrack);
             _progressTimer.Tick += (_, _) => RefreshPlaybackState();
             _progressTimer.Start();
+            UpdateMediaTitle(mediaUris);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
         public event Action? FullscreenRequested;
         public event Action<int>? CameraSelectionChanged;
+        public event Action<PlayerPlaylistEntry>? PlaylistEntryRequested;
         public Func<Task<Stream?>>? ChooseGpsExportStreamRequested { get; set; }
         public Func<int, Task>? ExportCurrentVideoRequested { get; set; }
         public Func<Task>? ExportRoutePngRequested { get; set; }
@@ -80,6 +84,8 @@ namespace Dashcam.Remote.Player
         public ICommand SelectCameraCommand { get; }
         public ICommand ToggleFullscreenCommand { get; }
         public ICommand TogglePlaylistCommand { get; }
+        public ICommand PreviousVideoCommand { get; }
+        public ICommand NextVideoCommand { get; }
         public ICommand ExportGpsCommand { get; }
         public ICommand ExportMp4Command { get; }
         public ICommand ExportRoutePngCommand { get; }
@@ -87,6 +93,25 @@ namespace Dashcam.Remote.Player
         public ICommand ExportSpeedCsvCommand { get; }
 
         public IReadOnlyList<PlayerPlaylistEntry> PlaylistEntries => _playlistEntries;
+        public int SelectedPlaylistIndex
+        {
+            get => _selectedPlaylistIndex;
+            private set
+            {
+                if (!Set(ref _selectedPlaylistIndex, value))
+                {
+                    return;
+                }
+
+                OnPropertyChanged(nameof(SelectedPlaylistEntry));
+                ((PlayerRelayCommand)PreviousVideoCommand).RaiseCanExecuteChanged();
+                ((PlayerRelayCommand)NextVideoCommand).RaiseCanExecuteChanged();
+            }
+        }
+        public PlayerPlaylistEntry? SelectedPlaylistEntry =>
+            _selectedPlaylistIndex >= 0 && _selectedPlaylistIndex < _playlistEntries.Count
+                ? _playlistEntries[_selectedPlaylistIndex]
+                : null;
 
         public bool IsPlaylistOpen
         {
@@ -258,6 +283,7 @@ namespace Dashcam.Remote.Player
 
         public void UpdateMediaTitle(IReadOnlyList<Uri> mediaUris)
         {
+            SelectedPlaylistIndex = FindPlaylistIndex(mediaUris);
             var names = mediaUris.Select(uri => Path.GetFileName(Uri.UnescapeDataString(uri.AbsolutePath))).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             var name = string.Join(" + ", names);
             _gpsRecordingStart = mediaUris.FirstOrDefault(uri => uri.IsFile) is { } firstUri &&
@@ -285,6 +311,29 @@ namespace Dashcam.Remote.Player
             _updatingPosition = true;
             Position = 0;
             _updatingPosition = false;
+        }
+
+        private int FindPlaylistIndex(IReadOnlyList<Uri> mediaUris)
+        {
+            for (var index = 0; index < _playlistEntries.Count; index++)
+            {
+                if (_playlistEntries[index].MediaUris.Any(mediaUri => mediaUris.Contains(mediaUri)))
+                {
+                    return index;
+                }
+            }
+
+            return _playlistEntries.Count > 0 ? 0 : -1;
+        }
+
+        private void SelectPlaylistEntry(int index)
+        {
+            if (index < 0 || index >= _playlistEntries.Count)
+            {
+                return;
+            }
+
+            PlaylistEntryRequested?.Invoke(_playlistEntries[index]);
         }
 
         public void SetPlaybackStatus(string status)
