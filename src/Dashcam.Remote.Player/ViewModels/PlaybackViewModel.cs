@@ -12,6 +12,7 @@ namespace Dashcam.Remote.Player
     public sealed class PlaybackViewModel : INotifyPropertyChanged, IDisposable
     {
         private readonly IReadOnlyList<MediaPlayer> _players;
+        private readonly IReadOnlyList<Uri> _playlistUris;
         private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
         private IReadOnlyList<GpsPoint> _gpsPoints = [];
         private DateTimeOffset? _gpsRecordingStart;
@@ -35,14 +36,16 @@ namespace Dashcam.Remote.Player
         private bool _updatingPosition;
         private bool _isMuted;
         private bool _hasGpsTrack;
+        private bool _isPlaylistOpen;
         private int _selectedCameraIndex;
         private double _zoom = 1;
         private double _position;
         private bool _disposed;
 
-        public PlaybackViewModel(IReadOnlyList<MediaPlayer> players, IReadOnlyList<Uri> mediaUris)
+        public PlaybackViewModel(IReadOnlyList<MediaPlayer> players, IReadOnlyList<Uri> mediaUris, IReadOnlyList<Uri>? playlistUris = null)
         {
             _players = players;
+            _playlistUris = playlistUris ?? mediaUris;
             UpdateMediaTitle(mediaUris);
             TogglePlaybackCommand = new PlayerRelayCommand(_ => TogglePlayback());
             StopPlaybackCommand = new PlayerRelayCommand(_ => StopPlayback());
@@ -51,6 +54,7 @@ namespace Dashcam.Remote.Player
             ToggleMuteCommand = new PlayerRelayCommand(_ => ToggleMute());
             SelectCameraCommand = new PlayerRelayCommand(value => SelectCamera(value), _ => HasRearCamera);
             ToggleFullscreenCommand = new PlayerRelayCommand(_ => FullscreenRequested?.Invoke());
+            TogglePlaylistCommand = new PlayerRelayCommand(_ => IsPlaylistOpen = !IsPlaylistOpen);
             ExportGpsCommand = new PlayerAsyncCommand(ExportGpsAsync, () => HasGpsTrack);
             ExportMp4Command = new PlayerAsyncCommand(ExportMp4Async, () => ExportCurrentVideoRequested is not null);
             ExportRoutePngCommand = new PlayerAsyncCommand(ExportRoutePngAsync, () => HasGpsTrack);
@@ -75,11 +79,20 @@ namespace Dashcam.Remote.Player
         public ICommand ToggleMuteCommand { get; }
         public ICommand SelectCameraCommand { get; }
         public ICommand ToggleFullscreenCommand { get; }
+        public ICommand TogglePlaylistCommand { get; }
         public ICommand ExportGpsCommand { get; }
         public ICommand ExportMp4Command { get; }
         public ICommand ExportRoutePngCommand { get; }
         public ICommand ExportSpeedChartPngCommand { get; }
         public ICommand ExportSpeedCsvCommand { get; }
+
+        public IReadOnlyList<Uri> PlaylistUris => _playlistUris;
+
+        public bool IsPlaylistOpen
+        {
+            get => _isPlaylistOpen;
+            private set => Set(ref _isPlaylistOpen, value);
+        }
 
         public string MediaTitle { get => _mediaTitle; private set => Set(ref _mediaTitle, value); }
         public string PlaybackStatus

@@ -15,16 +15,25 @@
     <StyleInclude Source="avares://Dashcam.Remote.Shared/Themes/Styles.axaml" />
     <StyleInclude Source="avares://Dashcam.Remote.Player/Themes/Styles.axaml" />
   </Window.Styles>
-<Grid RowDefinitions="*,Auto,Auto" ColumnDefinitions="2.1*,1*" RowSpacing="10" ColumnSpacing="10" Margin="12">
-    <Grid x:Name="VideoAndMapGrid" Grid.Row="0" Grid.ColumnSpan="2" ColumnDefinitions="2.1*,1*" ColumnSpacing="10">
+<Grid RowDefinitions="*,Auto,Auto" ColumnDefinitions="Auto,2.1*,1*" RowSpacing="10" ColumnSpacing="10" Margin="12">
+    <Border Grid.Column="0" Grid.RowSpan="3" Width="260" IsVisible="{Binding IsPlaylistOpen}" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" Padding="10">
+      <Grid RowDefinitions="Auto,*" RowSpacing="8">
+        <TextBlock Text="Videos" FontSize="15" FontWeight="SemiBold" />
+        <ListBox Grid.Row="1" ItemsSource="{Binding PlaylistUris}" />
+      </Grid>
+    </Border>
+    <Grid x:Name="VideoAndMapGrid" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" ColumnDefinitions="2.1*,1*" ColumnSpacing="10">
       <Border x:Name="VideoPanel" Grid.Column="0" Background="{DynamicResource VideoBackgroundBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" ClipToBounds="True">
         <vlc:VideoView x:Name="VideoSurface">
           <Grid x:Name="VideoOverlay" Background="{DynamicResource TransparentOverlayBrush}">
             <Border VerticalAlignment="Top" Background="{DynamicResource VideoOverlayBrush}" Padding="12,8">
-              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+              <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
                 <TextBlock Text="{Binding MediaTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Text="{Binding SelectedCameraName}" Foreground="{DynamicResource TextAccentBrush}" VerticalAlignment="Center" />
-                <Button Grid.Column="2" Command="{Binding ToggleFullscreenCommand}" ToolTip.Tip="Toggle video fullscreen" Width="34" Height="30" Padding="6">
+                <Button Grid.Column="2" Command="{Binding TogglePlaylistCommand}" ToolTip.Tip="Show video list" Width="34" Height="30" Padding="6">
+                  <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/view_list.svg" Width="18" Height="18" Stretch="Uniform" />
+                </Button>
+                <Button Grid.Column="3" Command="{Binding ToggleFullscreenCommand}" ToolTip.Tip="Toggle video fullscreen" Width="34" Height="30" Padding="6">
                   <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/fullscreen.svg" Width="18" Height="18" Stretch="Uniform" />
                 </Button>
               </Grid>
@@ -67,7 +76,7 @@
       </Border>
     </Grid>
 
-    <Border x:Name="TelemetryPanel" Grid.Row="1" Grid.Column="0" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="12">
+    <Border x:Name="TelemetryPanel" Grid.Row="1" Grid.Column="1" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="12">
       <Grid RowDefinitions="*,*" ColumnDefinitions="*,*,*,*" RowSpacing="8" ColumnSpacing="12">
         <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="SPEED" FontSize="10" Foreground="{DynamicResource TextAccentBrush}" />
@@ -104,7 +113,7 @@
       </Grid>
     </Border>
 
-    <Border x:Name="SpeedDistributionPanel" Grid.Row="1" Grid.Column="1" Grid.RowSpan="2" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="10">
+    <Border x:Name="SpeedDistributionPanel" Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="10">
       <Grid RowDefinitions="Auto,*" RowSpacing="8">
           <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
             <StackPanel VerticalAlignment="Center" Spacing="2">
@@ -122,7 +131,7 @@
       </Grid>
     </Border>
 
-    <Border x:Name="PlaybackControlsPanel" Grid.Row="2" Grid.Column="0" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="12">
+    <Border x:Name="PlaybackControlsPanel" Grid.Row="2" Grid.Column="1" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="12">
       <Grid RowDefinitions="Auto,Auto" RowSpacing="10">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
           <TextBlock Classes="secondary" Text="{Binding CurrentTimeText}" VerticalAlignment="Center" />
