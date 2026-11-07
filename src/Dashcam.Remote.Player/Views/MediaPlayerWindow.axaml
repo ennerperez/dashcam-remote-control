@@ -144,7 +144,7 @@
     </Border>
 
     <Border x:Name="PlaybackControlsPanel" Grid.Row="2" Grid.Column="1" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="12">
-      <Grid RowDefinitions="Auto,Auto" RowSpacing="10">
+      <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
           <TextBlock Classes="secondary" Text="{Binding CurrentTimeText}" VerticalAlignment="Center" />
           <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Position, Mode=TwoWay}" IsEnabled="{Binding CanSeek}" VerticalAlignment="Center" />
@@ -170,6 +170,17 @@
             <Button Command="{Binding ExportMp4Command}" ToolTip.Tip="Export selected camera to MP4" Width="42" Height="38" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/download.svg" Width="20" Height="20" Stretch="Uniform"/></Button>
           </StackPanel>
         </Grid>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center"
+                    VerticalAlignment="Center" Spacing="8">
+          <TextBlock Text="{Binding ClipSelectionText}" Classes="secondary"
+                     VerticalAlignment="Center" Margin="0,0,4,0" />
+          <Button Command="{Binding SetClipStartCommand}" Content="Set start"
+                  ToolTip.Tip="Set clip start to the current playhead" IsEnabled="{Binding CanSeek}" />
+          <Button Command="{Binding SetClipEndCommand}" Content="Set end"
+                  ToolTip.Tip="Set clip end to the current playhead" IsEnabled="{Binding CanSeek}" />
+          <Button Command="{Binding ExportClipCommand}" Content="Export clip"
+                  ToolTip.Tip="Export the selected video segment" />
+        </StackPanel>
       </Grid>
     </Border>
   </Grid>

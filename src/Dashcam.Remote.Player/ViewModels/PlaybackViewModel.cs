@@ -37,6 +37,8 @@ namespace Dashcam.Remote.Player
         private bool _isMuted;
         private bool _hasGpsTrack;
         private bool _isPlaylistOpen;
+        private long? _clipStartTimeMs;
+        private long? _clipEndTimeMs;
         private int _selectedPlaylistIndex;
         private int _selectedCameraIndex;
         private double _zoom = 1;
@@ -57,6 +59,9 @@ namespace Dashcam.Remote.Player
             TogglePlaylistCommand = new PlayerRelayCommand(_ => IsPlaylistOpen = !IsPlaylistOpen);
             PreviousVideoCommand = new PlayerRelayCommand(_ => SelectPlaylistEntry(_selectedPlaylistIndex - 1), _ => _selectedPlaylistIndex > 0);
             NextVideoCommand = new PlayerRelayCommand(_ => SelectPlaylistEntry(_selectedPlaylistIndex + 1), _ => _selectedPlaylistIndex >= 0 && _selectedPlaylistIndex < _playlistEntries.Count - 1);
+            SetClipStartCommand = new PlayerRelayCommand(_ => SetClipStart(), _ => CanSeek);
+            SetClipEndCommand = new PlayerRelayCommand(_ => SetClipEnd(), _ => CanSeek);
+            ExportClipCommand = new PlayerAsyncCommand(ExportClipAsync, CanExportClip);
             ExportGpsCommand = new PlayerAsyncCommand(ExportGpsAsync, () => HasGpsTrack);
             ExportMp4Command = new PlayerAsyncCommand(ExportMp4Async, () => ExportCurrentVideoRequested is not null);
             ExportRoutePngCommand = new PlayerAsyncCommand(ExportRoutePngAsync, () => HasGpsTrack);
@@ -71,6 +76,7 @@ namespace Dashcam.Remote.Player
         public event Action? FullscreenRequested;
         public event Action<int>? CameraSelectionChanged;
         public event Action<PlayerPlaylistEntry>? PlaylistEntryRequested;
+        public Func<int, long, long, Task>? ExportClipRequested { get; set; }
         public Func<Task<Stream?>>? ChooseGpsExportStreamRequested { get; set; }
         public Func<int, Task>? ExportCurrentVideoRequested { get; set; }
         public Func<Task>? ExportRoutePngRequested { get; set; }
@@ -86,6 +92,9 @@ namespace Dashcam.Remote.Player
         public ICommand TogglePlaylistCommand { get; }
         public ICommand PreviousVideoCommand { get; }
         public ICommand NextVideoCommand { get; }
+        public ICommand SetClipStartCommand { get; }
+        public ICommand SetClipEndCommand { get; }
+        public ICommand ExportClipCommand { get; }
         public ICommand ExportGpsCommand { get; }
         public ICommand ExportMp4Command { get; }
         public ICommand ExportRoutePngCommand { get; }
@@ -245,8 +254,14 @@ namespace Dashcam.Remote.Player
 
                 ((PlayerRelayCommand)SeekBackwardCommand).RaiseCanExecuteChanged();
                 ((PlayerRelayCommand)SeekForwardCommand).RaiseCanExecuteChanged();
+                ((PlayerRelayCommand)SetClipStartCommand).RaiseCanExecuteChanged();
+                ((PlayerRelayCommand)SetClipEndCommand).RaiseCanExecuteChanged();
+                ((PlayerAsyncCommand)ExportClipCommand).RaiseCanExecuteChanged();
             }
         }
+        public string ClipStartText => FormatClipTime(_clipStartTimeMs);
+        public string ClipEndText => FormatClipTime(_clipEndTimeMs);
+        public string ClipSelectionText => $"Start: {ClipStartText}  ·  End: {ClipEndText}";
         public double Position
         {
             get => _position;
@@ -283,6 +298,12 @@ namespace Dashcam.Remote.Player
 
         public void UpdateMediaTitle(IReadOnlyList<Uri> mediaUris)
         {
+            _clipStartTimeMs = null;
+            _clipEndTimeMs = null;
+            OnPropertyChanged(nameof(ClipStartText));
+            OnPropertyChanged(nameof(ClipEndText));
+            OnPropertyChanged(nameof(ClipSelectionText));
+            ((PlayerAsyncCommand)ExportClipCommand).RaiseCanExecuteChanged();
             SelectedPlaylistIndex = FindPlaylistIndex(mediaUris);
             var names = mediaUris.Select(uri => Path.GetFileName(Uri.UnescapeDataString(uri.AbsolutePath))).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             var name = string.Join(" + ", names);
@@ -337,6 +358,47 @@ namespace Dashcam.Remote.Player
 
             PlaylistEntryRequested?.Invoke(_playlistEntries[index]);
         }
+
+        private void SetClipStart()
+        {
+            _clipStartTimeMs = Math.Max(0, ActiveMediaPlayer.Time);
+            if (_clipEndTimeMs <= _clipStartTimeMs)
+            {
+                _clipEndTimeMs = null;
+                OnPropertyChanged(nameof(ClipEndText));
+            }
+
+            OnPropertyChanged(nameof(ClipStartText));
+            OnPropertyChanged(nameof(ClipSelectionText));
+            ((PlayerAsyncCommand)ExportClipCommand).RaiseCanExecuteChanged();
+        }
+
+        private void SetClipEnd()
+        {
+            _clipEndTimeMs = Math.Max(0, ActiveMediaPlayer.Time);
+            OnPropertyChanged(nameof(ClipEndText));
+            OnPropertyChanged(nameof(ClipSelectionText));
+            ((PlayerAsyncCommand)ExportClipCommand).RaiseCanExecuteChanged();
+        }
+
+        private bool CanExportClip() =>
+            ExportClipRequested is not null &&
+            _clipStartTimeMs is long startTimeMs &&
+            _clipEndTimeMs is long endTimeMs &&
+            endTimeMs > startTimeMs;
+
+        private async Task ExportClipAsync()
+        {
+            if (!CanExportClip() || _clipStartTimeMs is not long startTimeMs || _clipEndTimeMs is not long endTimeMs)
+            {
+                return;
+            }
+
+            await ExportClipRequested!(SelectedCameraIndex, startTimeMs, endTimeMs);
+        }
+
+        private static string FormatClipTime(long? timeMs) =>
+            timeMs is long value ? TimeSpan.FromMilliseconds(value).ToString(@"hh\:mm\:ss", CultureInfo.InvariantCulture) : "Not set";
 
         public void SetPlaybackStatus(string status)
         {
