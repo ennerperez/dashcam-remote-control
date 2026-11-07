@@ -1,8 +1,9 @@
 using System.Windows.Input;
+using System.ComponentModel;
 
 namespace Dashcam.Remote.Player;
 
-public sealed class FolderSelectionViewModel
+public sealed class FolderSelectionViewModel : INotifyPropertyChanged
 {
     private string? _selectedFolderPath;
 
@@ -13,6 +14,8 @@ public sealed class FolderSelectionViewModel
             _ => FolderSelected?.Invoke(SelectedFolderPath!),
             _ => !string.IsNullOrWhiteSpace(SelectedFolderPath));
     }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
 
     public Func<Task<string?>>? ChooseFolderRequested { get; set; }
 
@@ -33,6 +36,7 @@ public sealed class FolderSelectionViewModel
             }
 
             _selectedFolderPath = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SelectedFolderPath)));
             ((PlayerRelayCommand)OpenFolderCommand).RaiseCanExecuteChanged();
         }
     }
