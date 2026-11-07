@@ -13,6 +13,7 @@ namespace Dashcam.Remote.Player
     {
         private readonly IReadOnlyList<MediaPlayer> _players;
         private readonly IReadOnlyList<PlayerPlaylistEntry> _playlistEntries;
+        private Uri[] _currentMediaUris = [];
         private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
         private IReadOnlyList<GpsPoint> _gpsPoints = [];
         private DateTimeOffset? _gpsRecordingStart;
@@ -244,7 +245,21 @@ namespace Dashcam.Remote.Player
         public string ZoomText => $"{Zoom:0.0}×";
         public bool IsFrontSelected => SelectedCameraIndex == 0;
         public bool IsRearSelected => SelectedCameraIndex == 1;
-        public string SelectedCameraName => _selectedCameraIndex == 0 ? "Front view" : "Rear view";
+        public string SelectedCameraName
+        {
+            get
+            {
+                if (_currentMediaUris.Count > 1)
+                {
+                    return SelectedCameraIndex == 0 ? "Front view" : "Rear view";
+                }
+
+                var fileName = _currentMediaUris.FirstOrDefault() is { } mediaUri
+                    ? Path.GetFileNameWithoutExtension(mediaUri.IsFile ? mediaUri.LocalPath : mediaUri.AbsolutePath)
+                    : string.Empty;
+                return fileName.EndsWith("_B", StringComparison.OrdinalIgnoreCase) ? "Rear view" : "Front view";
+            }
+        }
         public string SelectedCameraLabel => _selectedCameraIndex == 0 ? "Front" : "Rear";
         public string MuteButtonLabel => IsMuted ? "Unmute" : "Mute";
         public string MuteButtonIconPath => IsMuted ? "/Assets/Icons/volume_off.svg" : "/Assets/Icons/volume_up.svg";
@@ -318,6 +333,8 @@ namespace Dashcam.Remote.Player
 
         public void UpdateMediaTitle(IReadOnlyList<Uri> mediaUris)
         {
+            _currentMediaUris = mediaUris.ToArray();
+            OnPropertyChanged(nameof(SelectedCameraName));
             _clipStartTimeMs = null;
             _clipEndTimeMs = null;
             OnPropertyChanged(nameof(ClipStartText));

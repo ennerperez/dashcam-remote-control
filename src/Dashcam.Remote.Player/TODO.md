@@ -10,7 +10,7 @@
 - [X] El player debe mostrar un botón para hacer clip, este debe permitir seleccionar un fragmento del video para exportarlo
 - [X] El player debe mostrar un botón para ver side by side front y back si estos están disponibles
 - [X] Si el video no tiene un back/front, pero si un front/back, no salen los botones de side by side ni de cambiar a front/back
-- [ ] Si el video termina en _B es back, entonces arriba de en el título debe decir Rear view
+- [X] Si el video termina en _B es back, entonces arriba de en el título debe decir Rear view
   - [ ] Actualmente, dice Front View y sale el botón abajo que dice Front aunque no existe tal video
 - [ ] Si el video termina en _F es front, entonces arriba de en el título debe decir Front view
 - [X] El player abajo a la izquierda dice "Paused"/"Playing"/"Stopped" elimina eso, no es necesario
