@@ -63,7 +63,10 @@ namespace Dashcam.Remote.Player
                     }
                     else
                     {
+                    if (!Design.IsDesignMode)
+                    {
                         RequestTile(key);
+                    }
                     }
                 }
             }

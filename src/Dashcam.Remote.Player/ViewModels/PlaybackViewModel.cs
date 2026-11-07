@@ -262,7 +262,9 @@ namespace Dashcam.Remote.Player
         }
         public string SelectedCameraLabel => _selectedCameraIndex == 0 ? "Front" : "Rear";
         public string MuteButtonLabel => IsMuted ? "Unmute" : "Mute";
-        public string MuteButtonIconPath => IsMuted ? "/Assets/Icons/volume_off.svg" : "/Assets/Icons/volume_up.svg";
+        public string MuteButtonIconPath => IsMuted
+            ? "avares://Dashcam.Remote.Shared/Assets/Icons/volume_off.svg"
+            : "avares://Dashcam.Remote.Shared/Assets/Icons/volume_up.svg";
         public bool IsPlaying
         {
             get => _isPlaying;
@@ -312,7 +314,9 @@ namespace Dashcam.Remote.Player
             }
         }
         public string PlaybackButtonLabel => IsPlaying ? "Pause" : "Play";
-        public string PlaybackButtonIconPath => IsPlaying ? "/Assets/Icons/pause.svg" : "/Assets/Icons/play_arrow.svg";
+        public string PlaybackButtonIconPath => IsPlaying
+            ? "avares://Dashcam.Remote.Shared/Assets/Icons/pause.svg"
+            : "avares://Dashcam.Remote.Shared/Assets/Icons/play_arrow.svg";
         public string GpsRouteJson => JsonSerializer.Serialize(_gpsPoints.Select(point => new { lat = point.Latitude, lon = point.Longitude, speed = Math.Max(0, point.SpeedMetersPerSecond * 3.6) }));
         public IReadOnlyList<GpsPoint> GpsPoints => _gpsPoints;
         public GpsPoint? GpsCurrentPoint => CurrentPoint;

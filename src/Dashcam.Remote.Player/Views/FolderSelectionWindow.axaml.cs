@@ -17,6 +17,7 @@ public partial class FolderSelectionWindow : Window
             ChooseFolderRequested = ChooseFolderAsync
         };
         _viewModel.FolderSelected += path => FolderSelected?.Invoke(path);
+        _viewModel.CancelRequested += Close;
         DataContext = _viewModel;
     }
 

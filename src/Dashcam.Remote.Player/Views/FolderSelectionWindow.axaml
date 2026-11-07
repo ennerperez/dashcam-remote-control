@@ -1,15 +1,30 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svg="clr-namespace:Avalonia.Svg;assembly=Svg.Controls.Avalonia"
         xmlns:vm="using:Dashcam.Remote.Player"
         x:Class="Dashcam.Remote.Player.FolderSelectionWindow"
         x:DataType="vm:FolderSelectionViewModel"
         Icon="avares://Dashcam.Remote.Shared/Assets/Icons/dashcam-remote-control.ico"
         Title="Open recordings folder"
-        Width="640" Height="340" MinWidth="520" MinHeight="300"
+        Width="640" Height="260" MinWidth="520" MinHeight="260"
         CanResize="False" Classes="app-window"
         WindowStartupLocation="CenterScreen">
+  <Design.DataContext>
+    <vm:FolderSelectionDesignViewModel />
+  </Design.DataContext>
   <Window.Styles>
     <StyleInclude Source="avares://Dashcam.Remote.Shared/Themes/Styles.axaml" />
+    <Style Selector="Button.danger">
+      <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+    </Style>
+    <Style Selector="Button.danger:pointerover">
+      <Setter Property="Background" Value="{DynamicResource DangerHoverBrush}" />
+    </Style>
+    <Style Selector="Button.danger:pressed">
+      <Setter Property="Background" Value="{DynamicResource DangerPressedBrush}" />
+    </Style>
   </Window.Styles>
   <Border Classes="panel" Padding="28">
     <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="14">
@@ -19,11 +34,17 @@
       <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="10">
         <TextBox Text="{Binding SelectedFolderPath}" IsReadOnly="True"
                  PlaceholderText="No folder selected" VerticalContentAlignment="Center" />
-        <Button Grid.Column="1" Content="Browse…" Command="{Binding ChooseFolderCommand}"
-                MinWidth="110" />
+        <Button Grid.Column="1" Command="{Binding ChooseFolderCommand}" MinWidth="110">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/folder.svg"
+                     Width="16" Height="16" Stretch="Uniform" />
+            <TextBlock Text="Browse…" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
       </Grid>
       <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
-        <Button Content="Open folder" Command="{Binding OpenFolderCommand}" MinWidth="120" />
+        <Button Content="Cancel" Classes="danger" Command="{Binding CancelCommand}" MinWidth="110" />
+        <Button Content="Continue" Command="{Binding OpenFolderCommand}" MinWidth="110" />
       </StackPanel>
     </Grid>
   </Border>

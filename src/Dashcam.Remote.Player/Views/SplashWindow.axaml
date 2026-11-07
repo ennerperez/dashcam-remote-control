@@ -4,7 +4,7 @@
         x:Class="Dashcam.Remote.Player.SplashWindow"
         Icon="avares://Dashcam.Remote.Shared/Assets/Icons/dashcam-remote-control.ico"
         Title="Dashcam Player"
-        Width="620" Height="360"
+        Width="480" Height="240"
         CanResize="False"
         Classes="app-window"
         WindowStartupLocation="CenterScreen"

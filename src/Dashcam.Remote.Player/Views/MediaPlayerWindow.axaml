@@ -12,12 +12,15 @@
         Width="1280" Height="820" MinWidth="720" MinHeight="500"
         CanResize="True" Classes="app-window media-player-window"
         WindowStartupLocation="CenterOwner">
+  <Design.DataContext>
+    <controls:PlaybackDesignViewModel />
+  </Design.DataContext>
   <Window.Styles>
     <StyleInclude Source="avares://Dashcam.Remote.Shared/Themes/Styles.axaml" />
     <StyleInclude Source="avares://Dashcam.Remote.Player/Themes/Styles.axaml" />
   </Window.Styles>
-<Grid RowDefinitions="*,Auto,Auto" ColumnDefinitions="Auto,2.1*,1*" RowSpacing="10" ColumnSpacing="10" Margin="12">
-    <Border Grid.Column="0" Grid.RowSpan="3" Width="260" IsVisible="{Binding IsPlaylistOpen}" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" Padding="10">
+<Grid x:Name="MainGrid" RowDefinitions="*,Auto,Auto" ColumnDefinitions="Auto,2.1*,1*" RowSpacing="10" ColumnSpacing="10" Margin="12">
+    <Border x:Name="Playlist" Grid.Column="0" Grid.RowSpan="3" Width="260" IsVisible="{Binding IsPlaylistOpen}" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" Padding="10">
       <Grid RowDefinitions="Auto,*" RowSpacing="8">
         <TextBlock Text="Videos" FontSize="15" FontWeight="SemiBold" />
         <ListBox Grid.Row="1" ItemsSource="{Binding PlaylistEntries}">
@@ -105,7 +108,7 @@
       </Border>
     </Grid>
 
-    <Border x:Name="TelemetryPanel" Grid.Row="1" Grid.Column="1" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="12">
+    <Border x:Name="TelemetryPanel" Grid.Row="2" Grid.Column="1" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="12">
       <Grid RowDefinitions="*,*" ColumnDefinitions="*,*,*,*" RowSpacing="8" ColumnSpacing="12">
         <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="SPEED" FontSize="10" Foreground="{DynamicResource TextAccentBrush}" />
@@ -153,14 +156,14 @@
               <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/download.svg" Width="19" Height="19" Stretch="Uniform" />
             </Button>
             <Button Grid.Column="2" Command="{Binding ExportSpeedChartPngCommand}" ToolTip.Tip="Export speed distribution chart as PNG" Width="36" Height="36" Padding="8">
-              <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/photo_camera.svg" Width="19" Height="19" Stretch="Uniform" />
+              <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/insert_chart.svg" Width="19" Height="19" Stretch="Uniform" />
             </Button>
           </Grid>
           <controls:SpeedDistributionChart x:Name="SpeedDistributionChart" Grid.Row="1" Points="{Binding GpsPoints}" MinHeight="62" />
       </Grid>
     </Border>
 
-    <Border x:Name="PlaybackControlsPanel" Grid.Row="2" Grid.Column="1" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="12">
+    <Border x:Name="PlaybackControlsPanel" Grid.Row="1" Grid.Column="1" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="12">
       <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="10">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
           <TextBlock Classes="secondary" Text="{Binding CurrentTimeText}" VerticalAlignment="Center" />
@@ -192,9 +195,9 @@
           <TextBlock Text="{Binding ClipSelectionText}" Classes="secondary"
                      VerticalAlignment="Center" Margin="0,0,4,0" />
           <Button Command="{Binding SetClipStartCommand}" Content="Set start"
-                  ToolTip.Tip="Set clip start to the current playhead" IsEnabled="{Binding CanSeek}" />
+                  ToolTip.Tip="Set clip start to the current play head" IsEnabled="{Binding CanSeek}" />
           <Button Command="{Binding SetClipEndCommand}" Content="Set end"
-                  ToolTip.Tip="Set clip end to the current playhead" IsEnabled="{Binding CanSeek}" />
+                  ToolTip.Tip="Set clip end to the current play head" IsEnabled="{Binding CanSeek}" />
           <Button Command="{Binding ExportClipCommand}" Content="Export clip"
                   ToolTip.Tip="Export the selected video segment" />
         </StackPanel>
