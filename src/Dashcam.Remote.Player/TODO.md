@@ -1,5 +1,5 @@
 # Pendientes
-- [ ] Al lanzar el player este debe mostrar un splash screen
+- [X] Al lanzar el player este debe mostrar un splash screen
 - [ ] Luego debe mostrar una ventana para seleccionar la carpeta para abrir
 - [ ] El player debe mostrar un botón para desplegar la lista de videos
   - [ ] La lista de videos debe mostrar los videos como se ven en el explorer agrupados por dupla F+B

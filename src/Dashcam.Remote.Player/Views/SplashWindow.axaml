@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:svg="clr-namespace:Avalonia.Svg;assembly=Svg.Controls.Avalonia"
+        x:Class="Dashcam.Remote.Player.SplashWindow"
+        Icon="avares://Dashcam.Remote.Shared/Assets/Icons/dashcam-remote-control.ico"
+        Title="Dashcam Player"
+        Width="620" Height="360"
+        CanResize="False"
+        Classes="app-window"
+        WindowStartupLocation="CenterScreen"
+        WindowDecorations="None"
+        ShowInTaskbar="False">
+  <Window.Styles>
+    <StyleInclude Source="avares://Dashcam.Remote.Shared/Themes/Styles.axaml" />
+  </Window.Styles>
+  <Border Background="{DynamicResource AppBackgroundBrush}"
+          BorderBrush="{DynamicResource PanelBorderBrush}"
+          BorderThickness="1"
+          Padding="36">
+    <Grid RowDefinitions="*,Auto" ColumnDefinitions="Auto,*" ColumnSpacing="22">
+      <Border Grid.Column="0" Width="82" Height="82" CornerRadius="18"
+              Background="{DynamicResource ButtonBackgroundBrush}"
+              VerticalAlignment="Center">
+        <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/videocam.svg"
+                 Width="48" Height="48" Stretch="Uniform"
+                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+      </Border>
+      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+        <TextBlock Text="DASHCAM" FontSize="12" FontWeight="Bold"
+                   Foreground="{DynamicResource TextAccentBrush}" />
+        <TextBlock Text="Player" FontSize="34" FontWeight="SemiBold"
+                   Foreground="{DynamicResource TextPrimaryBrush}" />
+        <TextBlock Text="Review your recordings and GPS routes"
+                   FontSize="14" Foreground="{DynamicResource TextSecondaryBrush}" />
+      </StackPanel>
+      <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="10">
+        <ProgressBar IsIndeterminate="True" Height="4" />
+        <TextBlock Text="Starting Dashcam Player…" FontSize="12"
+                   Foreground="{DynamicResource TextMutedBrush}"
+                   HorizontalAlignment="Center" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>
