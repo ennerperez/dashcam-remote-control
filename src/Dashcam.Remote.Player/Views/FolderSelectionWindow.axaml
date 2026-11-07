@@ -1,0 +1,30 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Dashcam.Remote.Player"
+        x:Class="Dashcam.Remote.Player.FolderSelectionWindow"
+        x:DataType="vm:FolderSelectionViewModel"
+        Icon="avares://Dashcam.Remote.Shared/Assets/Icons/dashcam-remote-control.ico"
+        Title="Open recordings folder"
+        Width="640" Height="340" MinWidth="520" MinHeight="300"
+        CanResize="False" Classes="app-window"
+        WindowStartupLocation="CenterScreen">
+  <Window.Styles>
+    <StyleInclude Source="avares://Dashcam.Remote.Shared/Themes/Styles.axaml" />
+  </Window.Styles>
+  <Border Classes="panel" Padding="28">
+    <Grid RowDefinitions="Auto,Auto,Auto,*,Auto" RowSpacing="14">
+      <TextBlock Text="Open recordings" FontSize="24" FontWeight="SemiBold" />
+      <TextBlock Grid.Row="1" Text="Choose the folder that contains your dashcam videos."
+                 Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap" />
+      <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+        <TextBox Text="{Binding SelectedFolderPath}" IsReadOnly="True"
+                 PlaceholderText="No folder selected" VerticalContentAlignment="Center" />
+        <Button Grid.Column="1" Content="Browse…" Command="{Binding ChooseFolderCommand}"
+                MinWidth="110" />
+      </Grid>
+      <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10">
+        <Button Content="Open folder" Command="{Binding OpenFolderCommand}" MinWidth="120" />
+      </StackPanel>
+    </Grid>
+  </Border>
+</Window>

@@ -12,7 +12,15 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new SplashWindow();
+            var splashWindow = new SplashWindow();
+            splashWindow.StartupReady += (_, _) =>
+            {
+                var folderSelectionWindow = new FolderSelectionWindow();
+                desktop.MainWindow = folderSelectionWindow;
+                folderSelectionWindow.Show();
+                splashWindow.Close();
+            };
+            desktop.MainWindow = splashWindow;
         }
 
         base.OnFrameworkInitializationCompleted();
