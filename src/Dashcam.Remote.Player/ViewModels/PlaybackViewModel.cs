@@ -293,6 +293,8 @@ namespace Dashcam.Remote.Player
                 ? recordingStart
                 : null;
             SelectedCameraIndex = 0;
+            OnPropertyChanged(nameof(HasRearCamera));
+            ((PlayerRelayCommand)SelectCameraCommand).RaiseCanExecuteChanged();
             Zoom = 1;
             _gpsPoints = [];
             HasGpsTrack = false;

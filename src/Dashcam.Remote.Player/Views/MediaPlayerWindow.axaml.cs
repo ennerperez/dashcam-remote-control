@@ -58,11 +58,7 @@ namespace Dashcam.Remote.Player
                 player.Media = media;
                 _mediaPlayers.Add(player);
                 _currentMedia.Add(media);
-                player.Opening += (_, _) => ReportStatus("Opening video…");
-                player.Playing += (_, _) => OnPlayerPlaying(player);
-                player.Paused += (_, _) => ReportStatus("Paused");
-                player.Stopped += (_, _) => ReportStatus("Stopped");
-                player.EncounteredError += (_, _) => ReportStatus("Unable to play this file.");
+                SubscribePlayerEvents(player);
             }
 
             _viewModel = new PlaybackViewModel(_mediaPlayers, _mediaUris, playlistUris);
@@ -72,7 +68,7 @@ namespace Dashcam.Remote.Player
             _viewModel.ExportSpeedChartPngRequested = ExportSpeedChartAsPngAsync;
             _viewModel.ExportSpeedCsvRequested = ExportSpeedDataAsCsvAsync;
             _viewModel.FullscreenRequested += ToggleFullscreen;
-            _viewModel.PlaylistEntryRequested += entry => Play([entry.MediaUris[0]]);
+            _viewModel.PlaylistEntryRequested += entry => Play(entry.MediaUris);
             _viewModel.CameraSelectionChanged += index => _ = TryLoadSiblingGpsTrackAsync(index);
             _viewModel.PropertyChanged += ViewModelOnPropertyChanged;
             ((PlayerAsyncCommand)_viewModel.ExportGpsCommand).Failed += exception => ReportStatus($"GPX export failed: {exception.Message}");
@@ -113,13 +109,17 @@ namespace Dashcam.Remote.Player
             }
 
             _isReplacingMedia = true;
+            _playbackStartCancellation?.Cancel();
             _pendingCameraPositionMs = null;
             _pendingCameraIndex = -1;
             try
             {
                 _mediaUris = nextUris;
+                var existingPlayerCount = _mediaPlayers.Count;
+                VideoSurface.MediaPlayer = null;
+                EnsurePlayerCount(nextUris.Length, nextUris);
                 _viewModel.UpdateMediaTitle(_mediaUris);
-                for (var index = 0; index < _mediaPlayers.Count; index++)
+                for (var index = 0; index < Math.Min(existingPlayerCount, nextUris.Length); index++)
                 {
                     var player = _mediaPlayers[index];
                     player.Stop();
@@ -135,6 +135,7 @@ namespace Dashcam.Remote.Player
             _activeCameraIndex = _viewModel.SelectedCameraIndex;
             if (_viewReady)
             {
+                AttachSelectedPlayerToVideoSurface();
                 QueueSelectedCameraStart(_activeCameraIndex);
             }
 
@@ -147,6 +148,41 @@ namespace Dashcam.Remote.Player
             {
                 _ = TryLoadSiblingGpsTrackAsync();
             }
+        }
+
+        private void EnsurePlayerCount(int count, Uri[] mediaUris)
+        {
+            while (_mediaPlayers.Count > count)
+            {
+                var lastIndex = _mediaPlayers.Count - 1;
+                var player = _mediaPlayers[lastIndex];
+                player.Stop();
+                player.Media = null;
+                player.Dispose();
+                _currentMedia[lastIndex].Dispose();
+                _mediaPlayers.RemoveAt(lastIndex);
+                _currentMedia.RemoveAt(lastIndex);
+            }
+
+            while (_mediaPlayers.Count < count)
+            {
+                var index = _mediaPlayers.Count;
+                var player = new MediaPlayer(_libVlc!);
+                var media = new Media(_libVlc!, mediaUris[index]);
+                player.Media = media;
+                _mediaPlayers.Add(player);
+                _currentMedia.Add(media);
+                SubscribePlayerEvents(player);
+            }
+        }
+
+        private void SubscribePlayerEvents(MediaPlayer player)
+        {
+            player.Opening += (_, _) => ReportStatus("Opening video…");
+            player.Playing += (_, _) => OnPlayerPlaying(player);
+            player.Paused += (_, _) => ReportStatus("Paused");
+            player.Stopped += (_, _) => ReportStatus("Stopped");
+            player.EncounteredError += (_, _) => ReportStatus("Unable to play this file.");
         }
 
         private void OnOpened(object? sender, EventArgs eventArgs)
