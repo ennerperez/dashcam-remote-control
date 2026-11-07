@@ -13,4 +13,4 @@
 - [ ] Si el video termina en _B es back, entonces arriba de en el título debe decir Rear view
   - [ ] Actualmente, dice Front View y sale el botón abajo que dice Front aunque no existe tal video
 - [ ] Si el video termina en _F es front, entonces arriba de en el título debe decir Front view
-- [ ] El player abajo a la izquierda dice "Paused"/"Playing"/"Stopped" elimina eso, no es necesario
+- [X] El player abajo a la izquierda dice "Paused"/"Playing"/"Stopped" elimina eso, no es necesario
