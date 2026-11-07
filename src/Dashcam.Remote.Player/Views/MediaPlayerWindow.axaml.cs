@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
@@ -64,6 +65,7 @@ namespace Dashcam.Remote.Player
             _viewModel = new PlaybackViewModel(_mediaPlayers, _mediaUris, playlistUris);
             _viewModel.ChooseGpsExportStreamRequested = ChooseGpsExportStreamAsync;
             _viewModel.ExportCurrentVideoRequested = ExportCurrentVideoToMp4Async;
+            _viewModel.ExportClipRequested = ExportClipToMp4Async;
             _viewModel.ExportRoutePngRequested = ExportRouteMapAsPngAsync;
             _viewModel.ExportSpeedChartPngRequested = ExportSpeedChartAsPngAsync;
             _viewModel.ExportSpeedCsvRequested = ExportSpeedDataAsCsvAsync;
@@ -73,10 +75,12 @@ namespace Dashcam.Remote.Player
             _viewModel.PropertyChanged += ViewModelOnPropertyChanged;
             ((PlayerAsyncCommand)_viewModel.ExportGpsCommand).Failed += exception => ReportStatus($"GPX export failed: {exception.Message}");
             ((PlayerAsyncCommand)_viewModel.ExportMp4Command).Failed += exception => ReportStatus($"MP4 export failed: {exception.Message}");
+            ((PlayerAsyncCommand)_viewModel.ExportClipCommand).Failed += exception => ReportStatus($"Clip export failed: {exception.Message}");
             ((PlayerAsyncCommand)_viewModel.ExportRoutePngCommand).Failed += exception => ReportStatus($"Route PNG export failed: {exception.Message}");
             ((PlayerAsyncCommand)_viewModel.ExportSpeedChartPngCommand).Failed += exception => ReportStatus($"Speed chart PNG export failed: {exception.Message}");
             ((PlayerAsyncCommand)_viewModel.ExportSpeedCsvCommand).Failed += exception => ReportStatus($"Speed data CSV export failed: {exception.Message}");
             ((PlayerAsyncCommand)_viewModel.ExportMp4Command).RaiseCanExecuteChanged();
+            ((PlayerAsyncCommand)_viewModel.ExportClipCommand).RaiseCanExecuteChanged();
             ((PlayerAsyncCommand)_viewModel.ExportRoutePngCommand).RaiseCanExecuteChanged();
             ((PlayerAsyncCommand)_viewModel.ExportSpeedChartPngCommand).RaiseCanExecuteChanged();
             ((PlayerAsyncCommand)_viewModel.ExportSpeedCsvCommand).RaiseCanExecuteChanged();
@@ -346,7 +350,12 @@ namespace Dashcam.Remote.Player
             return file is null ? null : await file.OpenWriteAsync();
         }
 
-        private async Task ExportCurrentVideoToMp4Async(int cameraIndex)
+        private Task ExportCurrentVideoToMp4Async(int cameraIndex) => ExportVideoToMp4Async(cameraIndex);
+
+        private Task ExportClipToMp4Async(int cameraIndex, long startTimeMs, long endTimeMs) =>
+            ExportVideoToMp4Async(cameraIndex, startTimeMs, endTimeMs);
+
+        private async Task ExportVideoToMp4Async(int cameraIndex, long? startTimeMs = null, long? endTimeMs = null)
         {
             if (_libVlc is null || _mediaUris.Length == 0)
             {
@@ -356,10 +365,11 @@ namespace Dashcam.Remote.Player
             cameraIndex = Math.Clamp(cameraIndex, 0, _mediaUris.Length - 1);
             var storage = TopLevel.GetTopLevel(this)?.StorageProvider ?? throw new InvalidOperationException("File picker is unavailable.");
             var sourceName = GetMediaBaseName(cameraIndex);
+            var isClip = startTimeMs is not null && endTimeMs is not null;
             var file = await storage.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                Title = "Export recording to MP4",
-                SuggestedFileName = (string.IsNullOrWhiteSpace(sourceName) ? "dashcam-video" : sourceName) + ".mp4",
+                Title = isClip ? "Export video clip" : "Export recording to MP4",
+                SuggestedFileName = (string.IsNullOrWhiteSpace(sourceName) ? "dashcam-video" : sourceName) + (isClip ? "_clip" : string.Empty) + ".mp4",
                 FileTypeChoices = [new FilePickerFileType("MP4 video") { Patterns = ["*.mp4"] }]
             });
             var path = file?.TryGetLocalPath();
@@ -374,6 +384,12 @@ namespace Dashcam.Remote.Player
             player.EndReached += (_, _) => finished.TrySetResult(null);
             player.EncounteredError += (_, _) => finished.TrySetResult(new InvalidOperationException("LibVLC could not export this recording."));
             using var media = new Media(_libVlc, _mediaUris[cameraIndex]);
+            if (startTimeMs is long start && endTimeMs is long end)
+            {
+                media.AddOption($":start-time={(start / 1000d).ToString("0.###", CultureInfo.InvariantCulture)}");
+                media.AddOption($":stop-time={(end / 1000d).ToString("0.###", CultureInfo.InvariantCulture)}");
+            }
+
             var output = path.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("'", "\\'", StringComparison.Ordinal);
             media.AddOption($":sout=#std{{access=file,mux=mp4,dst='{output}'}}");
             media.AddOption(":sout-keep");
