@@ -57,7 +57,7 @@
             <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom" Orientation="Horizontal" Margin="12" Spacing="6">
               <TextBlock Text="{Binding ZoomText}" Foreground="{DynamicResource WhiteBrush}" VerticalAlignment="Center" />
               <Slider x:Name="ZoomSlider" Minimum="1" Maximum="2" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding Zoom, Mode=TwoWay}" Width="112" VerticalAlignment="Center" ToolTip.Tip="Zoom video from 1× to 2×" />
-              <Button Classes="camera" Classes.active="{Binding IsFrontSelected}" Command="{Binding SelectCameraCommand}" CommandParameter="0" ToolTip.Tip="Front camera" Padding="10,6" MinWidth="74">
+              <Button Classes="camera" Classes.active="{Binding IsFrontSelected}" Command="{Binding SelectCameraCommand}" CommandParameter="0" ToolTip.Tip="Front camera" Padding="10,6" MinWidth="74" IsVisible="{Binding HasRearCamera}">
                 <StackPanel Orientation="Horizontal" Spacing="5"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/video_camera_front.svg" Width="16" Height="16" Stretch="Uniform"/><TextBlock Text="Front"/></StackPanel>
               </Button>
               <Button Classes="camera" Classes.active="{Binding IsRearSelected}" Command="{Binding SelectCameraCommand}" CommandParameter="1" ToolTip.Tip="Rear camera" Padding="10,6" MinWidth="74" IsVisible="{Binding HasRearCamera}">
