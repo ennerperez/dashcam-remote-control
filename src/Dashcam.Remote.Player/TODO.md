@@ -3,7 +3,7 @@
 - [X] Luego debe mostrar una ventana para seleccionar la carpeta para abrir
 - [X] El player debe mostrar un botón para desplegar la lista de videos
   - [X] La lista de videos debe mostrar los videos como se ven en el explorer agrupados por dupla F+B
-  - [ ] La lista de videos debe mostrar los videos con su nombre y fecha de creación
+  - [X] La lista de videos debe mostrar los videos con su nombre y fecha de creación
   - [ ] La lista de videos sale como un panel a la izquierda y se oculta con el mismo botón
 - [ ] El player debe mostrar 2 botones de anterior y siguiente en los controles de reproducción
 - [ ] Automáticamente, detecta si este tiene un par back+front
