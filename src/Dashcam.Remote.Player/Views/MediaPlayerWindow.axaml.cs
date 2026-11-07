@@ -39,7 +39,7 @@ namespace Dashcam.Remote.Player
 
         public int MediaCount => _mediaPlayers.Count;
 
-        public MediaPlayerWindow(Window owner, IReadOnlyList<Uri> mediaUris, Action<IReadOnlyList<Uri>>? deleteCachedMedia = null) : this()
+        public MediaPlayerWindow(Window? owner, IReadOnlyList<Uri> mediaUris, Action<IReadOnlyList<Uri>>? deleteCachedMedia = null, IReadOnlyList<Uri>? playlistUris = null) : this()
         {
             _owner = owner;
             _deleteCachedMedia = deleteCachedMedia;
@@ -65,7 +65,7 @@ namespace Dashcam.Remote.Player
                 player.EncounteredError += (_, _) => ReportStatus("Unable to play this file.");
             }
 
-            _viewModel = new PlaybackViewModel(_mediaPlayers, _mediaUris);
+            _viewModel = new PlaybackViewModel(_mediaPlayers, _mediaUris, playlistUris);
             _viewModel.ChooseGpsExportStreamRequested = ChooseGpsExportStreamAsync;
             _viewModel.ExportCurrentVideoRequested = ExportCurrentVideoToMp4Async;
             _viewModel.ExportRoutePngRequested = ExportRouteMapAsPngAsync;
@@ -84,9 +84,16 @@ namespace Dashcam.Remote.Player
             ((PlayerAsyncCommand)_viewModel.ExportSpeedChartPngCommand).RaiseCanExecuteChanged();
             ((PlayerAsyncCommand)_viewModel.ExportSpeedCsvCommand).RaiseCanExecuteChanged();
             DataContext = _viewModel;
-            Owner = owner;
-            UpdateOwnerSizeConstraints(initial: true);
-            _owner.SizeChanged += OwnerOnSizeChanged;
+            if (_owner is not null)
+            {
+                Owner = _owner;
+                UpdateOwnerSizeConstraints(initial: true);
+                _owner.SizeChanged += OwnerOnSizeChanged;
+            }
+            else
+            {
+                WindowStartupLocation = WindowStartupLocation.CenterScreen;
+            }
 
         }
 
