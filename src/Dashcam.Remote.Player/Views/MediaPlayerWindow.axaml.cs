@@ -216,26 +216,30 @@ namespace Dashcam.Remote.Player
         private void OnVideoSurfaceLoaded(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs)
         {
             AttachSelectedPlayerToVideoSurface();
-            if (_viewReady)
+            if (!_viewReady)
             {
-                if (_viewModel?.IsSideBySide == true)
-                {
-                    QueueSideBySideStart();
-                }
-                else
-                {
-                    QueueSelectedCameraStart(_viewModel?.SelectedCameraIndex ?? 0);
-                }
+                return;
+            }
+
+            if (_viewModel?.IsSideBySide == true)
+            {
+                QueueSideBySideStart();
+            }
+            else
+            {
+                QueueSelectedCameraStart(_viewModel?.SelectedCameraIndex ?? 0);
             }
         }
 
         private void OnRearVideoSurfaceLoaded(object? sender, Avalonia.Interactivity.RoutedEventArgs eventArgs)
         {
-            if (_viewModel?.IsSideBySide == true)
+            if (_viewModel?.IsSideBySide != true)
             {
-                AttachSelectedPlayerToVideoSurface();
-                QueueSideBySideStart();
+                return;
             }
+
+            AttachSelectedPlayerToVideoSurface();
+            QueueSideBySideStart();
         }
 
         private void AttachSelectedPlayerToVideoSurface()

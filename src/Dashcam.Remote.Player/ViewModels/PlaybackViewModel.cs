@@ -249,7 +249,7 @@ namespace Dashcam.Remote.Player
         {
             get
             {
-                if (_currentMediaUris.Count > 1)
+                if (_currentMediaUris.Length > 1)
                 {
                     return SelectedCameraIndex == 0 ? "Front view" : "Rear view";
                 }
