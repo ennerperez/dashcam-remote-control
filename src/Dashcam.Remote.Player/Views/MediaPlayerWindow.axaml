@@ -152,11 +152,17 @@
         </Grid>
         <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*">
           <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
+            <Button Command="{Binding PreviousVideoCommand}" ToolTip.Tip="Previous video" Width="42" Height="38" Padding="8">
+              <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/chevron_left.svg" Width="20" Height="20" Stretch="Uniform" />
+            </Button>
             <Button Command="{Binding SeekBackwardCommand}" ToolTip.Tip="Back 10 seconds" Width="42" Height="38" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/replay_10.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
             <Button Command="{Binding TogglePlaybackCommand}" ToolTip.Tip="{Binding PlaybackButtonLabel}" Width="42" Height="38" Padding="8">
               <svg:Svg Path="{Binding PlaybackButtonIconPath}" Width="20" Height="20" Stretch="Uniform"/>
             </Button>
             <Button Command="{Binding SeekForwardCommand}" ToolTip.Tip="Forward 10 seconds" Width="42" Height="38" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/forward_10.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
+            <Button Command="{Binding NextVideoCommand}" ToolTip.Tip="Next video" Width="42" Height="38" Padding="8">
+              <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/chevron_right.svg" Width="20" Height="20" Stretch="Uniform" />
+            </Button>
             <Button Command="{Binding StopPlaybackCommand}" ToolTip.Tip="Stop" Width="42" Height="38" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/stop_circle.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
             <Button Command="{Binding ToggleMuteCommand}" ToolTip.Tip="{Binding MuteButtonLabel}" Width="42" Height="38" Padding="8"><svg:Svg Path="{Binding MuteButtonIconPath}" Width="20" Height="20" Stretch="Uniform" /></Button>
           </StackPanel>
