@@ -39,9 +39,6 @@
                 <StackPanel Orientation="Horizontal" Spacing="5"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/videocam.svg" Width="16" Height="16" Stretch="Uniform"/><TextBlock Text="Rear"/></StackPanel>
               </Button>
             </StackPanel>
-            <Border HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="12" Padding="8,4" Background="{DynamicResource VideoOverlayBrush}" CornerRadius="0" IsHitTestVisible="False">
-              <TextBlock Text="{Binding PlaybackStatus}" Foreground="{DynamicResource WhiteBrush}" FontSize="12" />
-            </Border>
           </Grid>
         </vlc:VideoView>
       </Border>
