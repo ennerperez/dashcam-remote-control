@@ -28,7 +28,13 @@ public partial class App : Application
                         return;
                     }
 
-                    var playerWindow = new MediaPlayerWindow(null, [mediaUris[0]], playlistUris: mediaUris);
+                    var playlistEntries = PlayerPlaylistGrouping.Group(mediaUris);
+                    if (playlistEntries.Count == 0)
+                    {
+                        return;
+                    }
+
+                    var playerWindow = new MediaPlayerWindow(null, playlistEntries[0].MediaUris, playlistUris: mediaUris);
                     desktop.MainWindow = playerWindow;
                     playerWindow.Show();
                     folderSelectionWindow.Close();
