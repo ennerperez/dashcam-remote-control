@@ -12,6 +12,7 @@ A Windows desktop app for controlling Pelsee dashcams and browsing their recordi
 - Queue downloads with per-file progress, cancellation, and clear ready, queued, downloading, completed, and failed states. The queue runs up to five transfers in parallel.
 - View file sizes in MB and update them from the downloaded file's actual length.
 - Play videos and photos in the app. Read GPS data from recording files and export routes as GPX.
+- Detect vehicles and people in playing videos with ML.NET; toggle labels and bounding boxes from the player toolbar.
 - Flash the app's taskbar button when an operation ends while the window is inactive.
 
 ## Requirements

@@ -1,13 +1,24 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:svg="clr-namespace:Avalonia.Svg;assembly=Svg.Controls.Avalonia"
+             xmlns:controls="using:Dashcam.Remote.Player.Controls"
              x:Class="Dashcam.Remote.Player.Views.VideoToolbarOverlay">
   <UserControl.Styles>
     <StyleInclude Source="avares://Dashcam.Remote.Player/Themes/Styles.axaml" />
+    <Style Selector="Button.detection-toggle">
+      <Setter Property="Foreground" Value="{DynamicResource WhiteBrush}" />
+      <Setter Property="Background" Value="{DynamicResource VideoOverlayBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource ButtonBorderBrush}" />
+    </Style>
+    <Style Selector="Button.detection-toggle.active">
+      <Setter Property="Background" Value="{DynamicResource TileHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
   </UserControl.Styles>
   <Grid Background="{DynamicResource TransparentOverlayBrush}">
+    <controls:ObjectDetectionOverlay IsHitTestVisible="False" IsSideBySide="{Binding IsSideBySide}" ActiveCameraIndex="{Binding SelectedCameraIndex}" FrontDetections="{Binding FrontDetections}" RearDetections="{Binding RearDetections}" />
     <Border VerticalAlignment="Top" Background="{DynamicResource VideoOverlayBrush}" Padding="12,8">
-      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="8">
         <Button Grid.Column="0" Command="{Binding TogglePlaylistCommand}" ToolTip.Tip="Show or hide video list" Width="36" Height="36" Padding="8">
           <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/view_list.svg" Width="18" Height="18" Stretch="Uniform" />
         </Button>
@@ -22,6 +33,9 @@
         </Button>
         <Button Grid.Column="5" Command="{Binding ToggleFullscreenCommand}" ToolTip.Tip="Toggle video fullscreen" Width="36" Height="36" Padding="8">
           <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/fullscreen.svg" Width="18" Height="18" Stretch="Uniform" />
+        </Button>
+        <Button Grid.Column="6" Command="{Binding ToggleObjectDetectionCommand}" Classes="detection-toggle" Classes.active="{Binding IsObjectDetectionEnabled}" ToolTip.Tip="Toggle object detection" Width="36" Height="36" Padding="8">
+          <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/object_detection.svg" Width="18" Height="18" Stretch="Uniform" />
         </Button>
       </Grid>
     </Border>

@@ -46,7 +46,7 @@ When disconnected, the Files view can open a local folder and browse its files a
 
 ## Video and GPS
 
-Video playback uses LibVLCSharp. GPS telemetry is read from LigoGPS records embedded in the trailer after MPEG-TS packets. The app can export tracks as GPX.
+Video playback uses LibVLCSharp. Optional object detection uses ML.NET with the Tiny YOLOv2 ONNX model. The player samples frames at a bounded rate and draws labeled boxes over each visible camera view. GPS telemetry is read from LigoGPS records embedded in the trailer after MPEG-TS packets. The app can export tracks as GPX.
 
 ## Repository layout
 

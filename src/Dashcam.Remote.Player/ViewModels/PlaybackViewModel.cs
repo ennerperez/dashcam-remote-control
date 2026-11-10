@@ -6,6 +6,7 @@ using System.Windows.Input;
 using Avalonia.Threading;
 using LibVLCSharp.Shared;
 using Dashcam.Remote;
+using Dashcam.Remote.Player.Models;
 
 namespace Dashcam.Remote.Player
 {
@@ -50,12 +51,21 @@ namespace Dashcam.Remote.Player
         private double _position;
         private int _mapZoomOffset;
         private bool _isSatelliteMap;
+        private bool _isObjectDetectionEnabled = true;
+        private IReadOnlyList<ObjectDetection> _frontDetections = [];
+        private IReadOnlyList<ObjectDetection> _rearDetections = [];
         private bool _disposed;
 
         public PlaybackViewModel(IReadOnlyList<MediaPlayer> players, IReadOnlyList<Uri> mediaUris, IReadOnlyList<Uri>? playlistUris = null)
         {
             _players = players;
             _playlistEntries = PlayerPlaylistGrouping.Group(playlistUris ?? mediaUris);
+            foreach (var player in _players)
+            {
+                player.Volume = _volume;
+                player.Mute = _isMuted;
+            }
+
             TogglePlaybackCommand = new PlayerRelayCommand(_ => TogglePlayback(), _ => HasMedia);
             StopPlaybackCommand = new PlayerRelayCommand(_ => StopPlayback());
             SeekBackwardCommand = new PlayerRelayCommand(_ => SeekBy(TimeSpan.FromSeconds(-10)), _ => CanSeek);
@@ -72,6 +82,7 @@ namespace Dashcam.Remote.Player
             ZoomMapInCommand = new PlayerRelayCommand(_ => MapZoomOffset = Math.Min(6, MapZoomOffset + 1));
             ZoomMapOutCommand = new PlayerRelayCommand(_ => MapZoomOffset = Math.Max(-6, MapZoomOffset - 1));
             ToggleMapLayerCommand = new PlayerRelayCommand(_ => IsSatelliteMap = !IsSatelliteMap);
+            ToggleObjectDetectionCommand = new PlayerRelayCommand(_ => IsObjectDetectionEnabled = !IsObjectDetectionEnabled);
             PreviousVideoCommand = new PlayerRelayCommand(_ => SelectPlaylistEntry(_selectedPlaylistIndex - 1), _ => _selectedPlaylistIndex > 0);
             NextVideoCommand = new PlayerRelayCommand(_ => SelectPlaylistEntry(_selectedPlaylistIndex + 1), _ => _selectedPlaylistIndex >= 0 && _selectedPlaylistIndex < _playlistEntries.Count - 1);
             SetClipStartCommand = new PlayerRelayCommand(_ => SetClipStart(), _ => CanSeek);
@@ -115,6 +126,7 @@ namespace Dashcam.Remote.Player
         public ICommand ZoomMapInCommand { get; }
         public ICommand ZoomMapOutCommand { get; }
         public ICommand ToggleMapLayerCommand { get; }
+        public ICommand ToggleObjectDetectionCommand { get; }
         public ICommand PreviousVideoCommand { get; }
         public ICommand NextVideoCommand { get; }
         public ICommand SetClipStartCommand { get; }
@@ -145,6 +157,13 @@ namespace Dashcam.Remote.Player
             }
         }
         public string MapLayerButtonLabel => IsSatelliteMap ? "Map" : "Satellite";
+        public bool IsObjectDetectionEnabled
+        {
+            get => _isObjectDetectionEnabled;
+            private set => Set(ref _isObjectDetectionEnabled, value);
+        }
+        public IReadOnlyList<ObjectDetection> FrontDetections => _frontDetections;
+        public IReadOnlyList<ObjectDetection> RearDetections => _rearDetections;
         public bool HasMedia => _currentMediaUris.Length > 0;
         public int SelectedPlaylistIndex
         {
@@ -647,6 +666,26 @@ namespace Dashcam.Remote.Player
 
             PlaybackStatus = status;
             RefreshPlaybackState();
+        }
+
+        public void SetDetections(int cameraIndex, IReadOnlyList<ObjectDetection> detections)
+        {
+            if (cameraIndex == 0)
+            {
+                _frontDetections = detections;
+                OnPropertyChanged(nameof(FrontDetections));
+            }
+            else if (cameraIndex == 1)
+            {
+                _rearDetections = detections;
+                OnPropertyChanged(nameof(RearDetections));
+            }
+        }
+
+        public void ClearDetections()
+        {
+            SetDetections(0, []);
+            SetDetections(1, []);
         }
 
         public void SelectCamera(object? value)

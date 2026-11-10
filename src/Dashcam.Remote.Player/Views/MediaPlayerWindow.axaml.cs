@@ -7,6 +7,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using LibVLCSharp.Shared;
+using Dashcam.Remote.Player.Services;
 using Dashcam.Remote.Player.Views;
 using Dashcam.Remote;
 
@@ -21,6 +22,11 @@ namespace Dashcam.Remote.Player
         private PlaybackViewModel? _viewModel;
         private readonly List<Media> _currentMedia = [];
         private readonly CancellationTokenSource _playlistParseCancellation = new();
+        private readonly CancellationTokenSource _objectDetectionCancellation = new();
+        private readonly ObjectDetectionService _objectDetectionService = new();
+        private readonly ObjectDetectionTracker[] _objectDetectionTrackers;
+        private readonly DispatcherTimer _objectDetectionTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+        private readonly long[] _lastDetectedMediaTimes = [long.MinValue, long.MinValue];
         private Uri[] _mediaUris = [];
         private bool _isVideoFullscreen;
         private bool _viewReady;
@@ -31,12 +37,17 @@ namespace Dashcam.Remote.Player
         private CancellationTokenSource? _playbackStartCancellation;
         private bool _isClosing;
         private bool _playbackEndHandled;
+        private bool _objectDetectionBatchRunning;
+        private long _mediaGeneration;
+        private int _nextObjectTrackId;
+        private string? _lastObjectDetectionError;
         private long? _pendingCameraPositionMs;
         private int _pendingCameraIndex = -1;
         private bool _pendingCameraShouldResume;
 
         public MediaPlayerWindow()
         {
+            _objectDetectionTrackers = [new ObjectDetectionTracker(0, NextObjectTrackId), new ObjectDetectionTracker(1, NextObjectTrackId)];
             InitializeComponent();
             Closing += OnClosing;
             Closed += OnClosed;
@@ -44,6 +55,11 @@ namespace Dashcam.Remote.Player
             PositionChanged += (_, _) => UpdateVideoToolbarPosition();
             VideoSurfaceGrid.SizeChanged += (_, _) => UpdateVideoToolbarPosition();
             LayoutUpdated += (_, _) => UpdateVideoToolbarPosition();
+            _objectDetectionTimer.Tick += async (_, _) =>
+            {
+                RefreshTrackedDetections();
+                await DetectVideoFramesAsync();
+            };
             VideoSurface.Loaded += OnVideoSurfaceLoaded;
             RearVideoSurface.Loaded += OnRearVideoSurfaceLoaded;
         }
@@ -61,7 +77,7 @@ namespace Dashcam.Remote.Player
             }
 
             Core.Initialize();
-            _libVlc = new LibVLC();
+            _libVlc = new LibVLC("--no-osd", "--no-snapshot-preview");
             foreach (var uri in _mediaUris)
             {
                 var player = new MediaPlayer(_libVlc);
@@ -128,6 +144,11 @@ namespace Dashcam.Remote.Player
             }
 
             _isReplacingMedia = true;
+            _mediaGeneration++;
+            Array.Fill(_lastDetectedMediaTimes, long.MinValue);
+            ResetObjectDetectionTrackers();
+            _viewModel.ClearDetections();
+            _lastObjectDetectionError = null;
             _playbackStartCancellation?.Cancel();
             _pendingCameraPositionMs = null;
             _pendingCameraIndex = -1;
@@ -197,6 +218,8 @@ namespace Dashcam.Remote.Player
                 var index = _mediaPlayers.Count;
                 var player = new MediaPlayer(_libVlc!);
                 var media = new Media(_libVlc!, mediaUris[index]);
+                player.Volume = _viewModel?.Volume ?? 100;
+                player.Mute = _viewModel?.IsMuted ?? false;
                 player.Media = media;
                 _mediaPlayers.Add(player);
                 _currentMedia.Add(media);
@@ -310,6 +333,10 @@ namespace Dashcam.Remote.Player
         private void OnOpened(object? sender, EventArgs eventArgs)
         {
             _viewReady = true;
+            if (_viewModel?.IsObjectDetectionEnabled == true)
+            {
+                _objectDetectionTimer.Start();
+            }
             EnsureVideoToolbarWindow();
             AttachSelectedPlayerToVideoSurface();
             if (_viewModel?.IsSideBySide == true)
@@ -874,10 +901,143 @@ namespace Dashcam.Remote.Player
             else if (eventArgs.PropertyName == nameof(PlaybackViewModel.IsSideBySide))
             {
                 ApplySideBySideMode();
+                Array.Fill(_lastDetectedMediaTimes, long.MinValue);
+                ResetObjectDetectionTrackers();
+                _viewModel?.ClearDetections();
             }
             else if (eventArgs.PropertyName == nameof(PlaybackViewModel.IsPlaylistOpen))
             {
                 UpdatePlaylistColumn();
+            }
+            else if (eventArgs.PropertyName == nameof(PlaybackViewModel.IsObjectDetectionEnabled))
+            {
+                if (_viewModel?.IsObjectDetectionEnabled == true && _viewReady)
+                {
+                    Array.Fill(_lastDetectedMediaTimes, long.MinValue);
+                    _objectDetectionTimer.Start();
+                }
+                else
+                {
+                    _objectDetectionTimer.Stop();
+                    ResetObjectDetectionTrackers();
+                    _viewModel?.ClearDetections();
+                }
+            }
+        }
+
+        private async Task DetectVideoFramesAsync()
+        {
+            var viewModel = _viewModel;
+            if (_isClosing || _objectDetectionBatchRunning || viewModel?.IsObjectDetectionEnabled != true || !viewModel.HasMedia)
+            {
+                return;
+            }
+
+            _objectDetectionBatchRunning = true;
+            var generation = _mediaGeneration;
+            var cancellationToken = _objectDetectionCancellation.Token;
+            try
+            {
+                var cameraIndices = viewModel.IsSideBySide && _mediaPlayers.Count > 1
+                    ? Enumerable.Range(0, _mediaPlayers.Count).ToArray()
+                    : [Math.Clamp(viewModel.SelectedCameraIndex, 0, _mediaPlayers.Count - 1)];
+
+                foreach (var cameraIndex in cameraIndices)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var player = _mediaPlayers[cameraIndex];
+                    var mediaTime = Math.Max(0, player.Time);
+                    if (_lastDetectedMediaTimes[cameraIndex] == mediaTime)
+                    {
+                        continue;
+                    }
+
+                    var path = Path.Combine(Path.GetTempPath(), "DashcamRemote", $"detection-{Guid.NewGuid():N}.png");
+                    Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                    var snapshotTaken = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    EventHandler<MediaPlayerSnapshotTakenEventArgs> handler = (_, eventArgs) =>
+                    {
+                        if (string.Equals(Path.GetFullPath(eventArgs.Filename), path, StringComparison.OrdinalIgnoreCase))
+                        {
+                            snapshotTaken.TrySetResult(Math.Max(0, player.Time));
+                        }
+                    };
+
+                    player.SnapshotTaken += handler;
+                    try
+                    {
+                        if (!player.TakeSnapshot(0, path, 416, 416))
+                        {
+                            continue;
+                        }
+
+                        var captureTimeMs = await snapshotTaken.Task.WaitAsync(TimeSpan.FromSeconds(4), cancellationToken);
+                        _lastDetectedMediaTimes[cameraIndex] = captureTimeMs;
+                        var detections = await _objectDetectionService.DetectAsync(path, cancellationToken);
+                        if (!_isClosing && generation == _mediaGeneration && viewModel.IsObjectDetectionEnabled)
+                        {
+                            var currentTimeMs = Math.Max(captureTimeMs, player.Time);
+                            var trackedDetections = _objectDetectionTrackers[cameraIndex].Update(detections, captureTimeMs, currentTimeMs);
+                            viewModel.SetDetections(cameraIndex, trackedDetections);
+                            _lastObjectDetectionError = null;
+                        }
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+                    catch (Exception exception)
+                    {
+                        if (_lastObjectDetectionError != exception.Message)
+                        {
+                            _lastObjectDetectionError = exception.Message;
+                            ReportStatus($"Object detection unavailable: {exception.Message}");
+                        }
+                    }
+                    finally
+                    {
+                        player.SnapshotTaken -= handler;
+                        try { File.Delete(path); }
+                        catch (IOException) { }
+                        catch (UnauthorizedAccessException) { }
+                    }
+                }
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+            }
+            finally
+            {
+                _objectDetectionBatchRunning = false;
+            }
+        }
+
+        private void RefreshTrackedDetections()
+        {
+            var viewModel = _viewModel;
+            if (_isClosing || viewModel?.IsObjectDetectionEnabled != true || !viewModel.HasMedia)
+            {
+                return;
+            }
+
+            var cameraIndices = viewModel.IsSideBySide && _mediaPlayers.Count > 1
+                ? Enumerable.Range(0, _mediaPlayers.Count)
+                : [Math.Clamp(viewModel.SelectedCameraIndex, 0, _mediaPlayers.Count - 1)];
+
+            foreach (var cameraIndex in cameraIndices)
+            {
+                var currentTimeMs = Math.Max(0, _mediaPlayers[cameraIndex].Time);
+                viewModel.SetDetections(cameraIndex, _objectDetectionTrackers[cameraIndex].GetCurrentDetections(currentTimeMs));
+            }
+        }
+
+        private int NextObjectTrackId() => Interlocked.Increment(ref _nextObjectTrackId);
+
+        private void ResetObjectDetectionTrackers()
+        {
+            foreach (var tracker in _objectDetectionTrackers)
+            {
+                tracker.Reset();
             }
         }
 
@@ -1129,6 +1289,8 @@ namespace Dashcam.Remote.Player
         private void OnClosing(object? sender, WindowClosingEventArgs eventArgs)
         {
             _isClosing = true;
+            _objectDetectionTimer.Stop();
+            _objectDetectionCancellation.Cancel();
             _playlistParseCancellation.Cancel();
             _playbackStartCancellation?.Cancel();
             _exportPlayer?.Stop();
@@ -1143,6 +1305,9 @@ namespace Dashcam.Remote.Player
 
         private void OnClosed(object? sender, EventArgs eventArgs)
         {
+            _objectDetectionTimer.Stop();
+            _objectDetectionCancellation.Dispose();
+            _objectDetectionService.Dispose();
             _playbackStartCancellation?.Cancel();
             _playbackStartCancellation?.Dispose();
             _playbackStartCancellation = null;

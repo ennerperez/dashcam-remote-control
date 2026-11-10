@@ -26,6 +26,7 @@ namespace Dashcam.Remote.Player
         public double PlaybackSpeed { get; set; } = 1;
         public int Volume { get; set; } = 70;
         public bool IsLooping => false;
+        public bool IsObjectDetectionEnabled => true;
         public bool IsExportMode => false;
         public bool IsPlaybackControlsMode => true;
         public string CurrentTimeText => "00:42";
@@ -72,6 +73,7 @@ namespace Dashcam.Remote.Player
         public ICommand StopPlaybackCommand { get; } = NoOpCommand();
         public ICommand ToggleMuteCommand { get; } = NoOpCommand();
         public ICommand ToggleLoopCommand { get; } = NoOpCommand();
+        public ICommand ToggleObjectDetectionCommand { get; } = NoOpCommand();
         public ICommand CaptureFrameCommand { get; } = NoOpCommand();
         public ICommand EnterClipExportModeCommand { get; } = NoOpCommand();
         public ICommand CancelClipExportModeCommand { get; } = NoOpCommand();
