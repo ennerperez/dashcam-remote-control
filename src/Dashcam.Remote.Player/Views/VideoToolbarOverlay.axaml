@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:svg="clr-namespace:Avalonia.Svg;assembly=Svg.Controls.Avalonia"
+             x:Class="Dashcam.Remote.Player.Views.VideoToolbarOverlay">
+  <UserControl.Styles>
+    <StyleInclude Source="avares://Dashcam.Remote.Player/Themes/Styles.axaml" />
+  </UserControl.Styles>
+  <Grid Background="{DynamicResource TransparentOverlayBrush}">
+    <Border VerticalAlignment="Top" Background="{DynamicResource VideoOverlayBrush}" Padding="12,8">
+      <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+        <Button Grid.Column="0" Command="{Binding TogglePlaylistCommand}" ToolTip.Tip="Show or hide video list" Width="36" Height="36" Padding="8">
+          <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/view_list.svg" Width="18" Height="18" Stretch="Uniform" />
+        </Button>
+        <Button Grid.Column="2" Classes="camera" Classes.active="{Binding IsFrontSelected}" Command="{Binding SelectCameraCommand}" CommandParameter="0" ToolTip.Tip="Front camera" Width="36" Height="36" Padding="8">
+          <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/video_camera_front.svg" Width="18" Height="18" Stretch="Uniform" />
+        </Button>
+        <Button Grid.Column="3" Classes="camera" Classes.active="{Binding IsRearSelected}" Command="{Binding SelectCameraCommand}" CommandParameter="1" ToolTip.Tip="Rear camera" Width="36" Height="36" Padding="8">
+          <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/videocam.svg" Width="18" Height="18" Stretch="Uniform" />
+        </Button>
+        <Button Grid.Column="4" Command="{Binding ToggleSideBySideCommand}" Classes.active="{Binding IsSideBySide}" ToolTip.Tip="Toggle front and rear side by side" Width="36" Height="36" Padding="8">
+          <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/split_view.svg" Width="18" Height="18" Stretch="Uniform" />
+        </Button>
+        <Button Grid.Column="5" Command="{Binding ToggleFullscreenCommand}" ToolTip.Tip="Toggle video fullscreen" Width="36" Height="36" Padding="8">
+          <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/fullscreen.svg" Width="18" Height="18" Stretch="Uniform" />
+        </Button>
+      </Grid>
+    </Border>
+    <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom" Orientation="Horizontal" Margin="12" Spacing="6">
+      <TextBlock Text="{Binding PlaybackSpeedText}" Foreground="{DynamicResource WhiteBrush}" VerticalAlignment="Center" />
+      <Slider Minimum="1" Maximum="5" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding PlaybackSpeed, Mode=TwoWay}" Width="112" VerticalAlignment="Center" ToolTip.Tip="Playback speed from 1× to 5×" />
+    </StackPanel>
+  </Grid>
+</UserControl>

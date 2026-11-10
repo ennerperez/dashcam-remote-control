@@ -43,30 +43,42 @@ namespace Dashcam.Remote.Player
         private long? _clipEndTimeMs;
         private int _selectedPlaylistIndex;
         private int _selectedCameraIndex;
-        private double _zoom = 1;
+        private double _playbackSpeed = 1;
+        private int _volume = 100;
+        private bool _isLooping;
+        private bool _isExportMode;
         private double _position;
+        private int _mapZoomOffset;
+        private bool _isSatelliteMap;
         private bool _disposed;
 
         public PlaybackViewModel(IReadOnlyList<MediaPlayer> players, IReadOnlyList<Uri> mediaUris, IReadOnlyList<Uri>? playlistUris = null)
         {
             _players = players;
             _playlistEntries = PlayerPlaylistGrouping.Group(playlistUris ?? mediaUris);
-            TogglePlaybackCommand = new PlayerRelayCommand(_ => TogglePlayback());
+            TogglePlaybackCommand = new PlayerRelayCommand(_ => TogglePlayback(), _ => HasMedia);
             StopPlaybackCommand = new PlayerRelayCommand(_ => StopPlayback());
             SeekBackwardCommand = new PlayerRelayCommand(_ => SeekBy(TimeSpan.FromSeconds(-10)), _ => CanSeek);
             SeekForwardCommand = new PlayerRelayCommand(_ => SeekBy(TimeSpan.FromSeconds(10)), _ => CanSeek);
             ToggleMuteCommand = new PlayerRelayCommand(_ => ToggleMute());
-            SelectCameraCommand = new PlayerRelayCommand(value => SelectCamera(value), _ => HasRearCamera);
+            ToggleLoopCommand = new PlayerRelayCommand(_ => IsLooping = !IsLooping);
+            CaptureFrameCommand = new PlayerAsyncCommand(CaptureFrameAsync, () => HasMedia && CaptureFrameRequested is not null);
+            EnterClipExportModeCommand = new PlayerRelayCommand(_ => EnterClipExportMode(), _ => CanSeek);
+            CancelClipExportModeCommand = new PlayerRelayCommand(_ => IsExportMode = false);
+            SelectCameraCommand = new PlayerRelayCommand(value => SelectCamera(value), CanSelectCamera);
             ToggleFullscreenCommand = new PlayerRelayCommand(_ => FullscreenRequested?.Invoke());
             ToggleSideBySideCommand = new PlayerRelayCommand(_ => IsSideBySide = !IsSideBySide, _ => HasRearCamera);
             TogglePlaylistCommand = new PlayerRelayCommand(_ => IsPlaylistOpen = !IsPlaylistOpen);
+            ZoomMapInCommand = new PlayerRelayCommand(_ => MapZoomOffset = Math.Min(6, MapZoomOffset + 1));
+            ZoomMapOutCommand = new PlayerRelayCommand(_ => MapZoomOffset = Math.Max(-6, MapZoomOffset - 1));
+            ToggleMapLayerCommand = new PlayerRelayCommand(_ => IsSatelliteMap = !IsSatelliteMap);
             PreviousVideoCommand = new PlayerRelayCommand(_ => SelectPlaylistEntry(_selectedPlaylistIndex - 1), _ => _selectedPlaylistIndex > 0);
             NextVideoCommand = new PlayerRelayCommand(_ => SelectPlaylistEntry(_selectedPlaylistIndex + 1), _ => _selectedPlaylistIndex >= 0 && _selectedPlaylistIndex < _playlistEntries.Count - 1);
             SetClipStartCommand = new PlayerRelayCommand(_ => SetClipStart(), _ => CanSeek);
             SetClipEndCommand = new PlayerRelayCommand(_ => SetClipEnd(), _ => CanSeek);
             ExportClipCommand = new PlayerAsyncCommand(ExportClipAsync, CanExportClip);
             ExportGpsCommand = new PlayerAsyncCommand(ExportGpsAsync, () => HasGpsTrack);
-            ExportMp4Command = new PlayerAsyncCommand(ExportMp4Async, () => ExportCurrentVideoRequested is not null);
+            ExportMp4Command = new PlayerAsyncCommand(ExportMp4Async, () => HasMedia && ExportCurrentVideoRequested is not null);
             ExportRoutePngCommand = new PlayerAsyncCommand(ExportRoutePngAsync, () => HasGpsTrack);
             ExportSpeedChartPngCommand = new PlayerAsyncCommand(ExportSpeedChartPngAsync, () => HasGpsTrack);
             ExportSpeedCsvCommand = new PlayerAsyncCommand(ExportSpeedCsvAsync, () => HasGpsTrack);
@@ -77,9 +89,11 @@ namespace Dashcam.Remote.Player
 
         public event PropertyChangedEventHandler? PropertyChanged;
         public event Action? FullscreenRequested;
+        public event Action? SideBySidePlaybackRequested;
         public event Action<int>? CameraSelectionChanged;
         public event Action<PlayerPlaylistEntry>? PlaylistEntryRequested;
-        public Func<int, long, long, Task>? ExportClipRequested { get; set; }
+        public Func<int, long, long, Task<bool>>? ExportClipRequested { get; set; }
+        public Func<int, Task>? CaptureFrameRequested { get; set; }
         public Func<Task<Stream?>>? ChooseGpsExportStreamRequested { get; set; }
         public Func<int, Task>? ExportCurrentVideoRequested { get; set; }
         public Func<Task>? ExportRoutePngRequested { get; set; }
@@ -90,10 +104,17 @@ namespace Dashcam.Remote.Player
         public ICommand SeekBackwardCommand { get; }
         public ICommand SeekForwardCommand { get; }
         public ICommand ToggleMuteCommand { get; }
+        public ICommand ToggleLoopCommand { get; }
+        public ICommand CaptureFrameCommand { get; }
+        public ICommand EnterClipExportModeCommand { get; }
+        public ICommand CancelClipExportModeCommand { get; }
         public ICommand SelectCameraCommand { get; }
         public ICommand ToggleFullscreenCommand { get; }
         public ICommand ToggleSideBySideCommand { get; }
         public ICommand TogglePlaylistCommand { get; }
+        public ICommand ZoomMapInCommand { get; }
+        public ICommand ZoomMapOutCommand { get; }
+        public ICommand ToggleMapLayerCommand { get; }
         public ICommand PreviousVideoCommand { get; }
         public ICommand NextVideoCommand { get; }
         public ICommand SetClipStartCommand { get; }
@@ -106,6 +127,25 @@ namespace Dashcam.Remote.Player
         public ICommand ExportSpeedCsvCommand { get; }
 
         public IReadOnlyList<PlayerPlaylistEntry> PlaylistEntries => _playlistEntries;
+        public string PlaylistCountText => $"{_playlistEntries.Count} items";
+        public int MapZoomOffset
+        {
+            get => _mapZoomOffset;
+            private set => Set(ref _mapZoomOffset, value);
+        }
+        public bool IsSatelliteMap
+        {
+            get => _isSatelliteMap;
+            private set
+            {
+                if (Set(ref _isSatelliteMap, value))
+                {
+                    OnPropertyChanged(nameof(MapLayerButtonLabel));
+                }
+            }
+        }
+        public string MapLayerButtonLabel => IsSatelliteMap ? "Map" : "Satellite";
+        public bool HasMedia => _currentMediaUris.Length > 0;
         public int SelectedPlaylistIndex
         {
             get => _selectedPlaylistIndex;
@@ -190,7 +230,7 @@ namespace Dashcam.Remote.Player
                 OnPropertyChanged(nameof(MinimumSpeedText));
             }
         }
-        public bool HasRearCamera => _players.Count > 1;
+        public bool HasRearCamera => HasMedia && _currentMediaUris.Length > 1;
         public bool IsSideBySide
         {
             get => _isSideBySide;
@@ -223,47 +263,70 @@ namespace Dashcam.Remote.Player
                 OnPropertyChanged(nameof(ActiveMediaPlayer));
                 OnPropertyChanged(nameof(IsFrontSelected));
                 OnPropertyChanged(nameof(IsRearSelected));
-                ApplyVideoCrop();
             }
         }
         public MediaPlayer ActiveMediaPlayer => _players[Math.Clamp(SelectedCameraIndex, 0, _players.Count - 1)];
-        public double Zoom
+        public double PlaybackSpeed
         {
-            get => _zoom;
+            get => _playbackSpeed;
             set
             {
-                var zoom = Math.Clamp(Math.Round(value * 2, MidpointRounding.AwayFromZero) / 2, 1, 2);
-                if (!Set(ref _zoom, zoom))
+                var speed = Math.Clamp(Math.Round(value * 2, MidpointRounding.AwayFromZero) / 2, 1, 5);
+                if (!Set(ref _playbackSpeed, speed))
                 {
                     return;
                 }
 
-                OnPropertyChanged(nameof(ZoomText));
-                ApplyVideoCrop();
+                OnPropertyChanged(nameof(PlaybackSpeedText));
+                foreach (var player in _players)
+                {
+                    player.SetRate((float)speed);
+                }
             }
         }
-        public string ZoomText => $"{Zoom:0.0}×";
-        public bool IsFrontSelected => SelectedCameraIndex == 0;
-        public bool IsRearSelected => SelectedCameraIndex == 1;
+        public string PlaybackSpeedText => $"{PlaybackSpeed:0.0}×";
+        public int Volume
+        {
+            get => _volume;
+            set
+            {
+                var volume = Math.Clamp(value, 0, 100);
+                if (!Set(ref _volume, volume))
+                {
+                    return;
+                }
+
+                foreach (var player in _players)
+                {
+                    player.Volume = volume;
+                }
+            }
+        }
+        public bool IsLooping { get => _isLooping; private set => Set(ref _isLooping, value); }
+        private bool IsRearOnlyMedia => _currentMediaUris.Length == 1 && PlayerPlaylistGrouping.IsRear(_currentMediaUris[0]);
+        public bool IsFrontSelected => HasMedia && (HasRearCamera ? SelectedCameraIndex == 0 : !IsRearOnlyMedia);
+        public bool IsRearSelected => HasMedia && (HasRearCamera ? SelectedCameraIndex == 1 : IsRearOnlyMedia);
         public string SelectedCameraName
         {
             get
             {
+                if (!HasMedia)
+                {
+                    return string.Empty;
+                }
+
                 if (_currentMediaUris.Length > 1)
                 {
                     return SelectedCameraIndex == 0 ? "Front view" : "Rear view";
                 }
 
-                var fileName = _currentMediaUris.FirstOrDefault() is { } mediaUri
-                    ? Path.GetFileNameWithoutExtension(mediaUri.IsFile ? mediaUri.LocalPath : mediaUri.AbsolutePath)
-                    : string.Empty;
-                return fileName.EndsWith("_B", StringComparison.OrdinalIgnoreCase) ? "Rear view" : "Front view";
+                return IsRearOnlyMedia ? "Rear view" : "Front view";
             }
         }
         public string SelectedCameraLabel => _selectedCameraIndex == 0 ? "Front" : "Rear";
         public string MuteButtonLabel => IsMuted ? "Unmute" : "Mute";
         public string MuteButtonIconPath => IsMuted
-            ? "avares://Dashcam.Remote.Shared/Assets/Icons/volume_off.svg"
+            ? "avares://Dashcam.Remote.Shared/Assets/Icons/volume_mute.svg"
             : "avares://Dashcam.Remote.Shared/Assets/Icons/volume_up.svg";
         public bool IsPlaying
         {
@@ -291,13 +354,34 @@ namespace Dashcam.Remote.Player
 
                 ((PlayerRelayCommand)SeekBackwardCommand).RaiseCanExecuteChanged();
                 ((PlayerRelayCommand)SeekForwardCommand).RaiseCanExecuteChanged();
+                ((PlayerRelayCommand)EnterClipExportModeCommand).RaiseCanExecuteChanged();
                 ((PlayerRelayCommand)SetClipStartCommand).RaiseCanExecuteChanged();
                 ((PlayerRelayCommand)SetClipEndCommand).RaiseCanExecuteChanged();
                 ((PlayerAsyncCommand)ExportClipCommand).RaiseCanExecuteChanged();
             }
         }
-        public string ClipStartText => FormatClipTime(_clipStartTimeMs);
-        public string ClipEndText => FormatClipTime(_clipEndTimeMs);
+        public string ClipStartText
+        {
+            get => FormatClipTime(_clipStartTimeMs);
+            set => UpdateClipStart(value);
+        }
+        public string ClipEndText
+        {
+            get => FormatClipTime(_clipEndTimeMs);
+            set => UpdateClipEnd(value);
+        }
+        public bool IsExportMode
+        {
+            get => _isExportMode;
+            private set
+            {
+                if (Set(ref _isExportMode, value))
+                {
+                    OnPropertyChanged(nameof(IsPlaybackControlsMode));
+                }
+            }
+        }
+        public bool IsPlaybackControlsMode => !IsExportMode;
         public string ClipSelectionText => $"Start: {ClipStartText}  ·  End: {ClipEndText}";
         public double Position
         {
@@ -310,7 +394,19 @@ namespace Dashcam.Remote.Player
                     return;
                 }
 
-                _players[Math.Clamp(SelectedCameraIndex, 0, _players.Count - 1)].Position = (float)position;
+                var activePlayer = ActiveMediaPlayer;
+                if (IsSideBySide)
+                {
+                    var targetTime = (long)(position * activePlayer.Length);
+                    foreach (var player in _players)
+                    {
+                        player.Time = Math.Clamp(targetTime, 0, Math.Max(0, player.Length));
+                    }
+                }
+                else
+                {
+                    activePlayer.Position = (float)position;
+                }
             }
         }
         public string PlaybackButtonLabel => IsPlaying ? "Pause" : "Play";
@@ -338,9 +434,16 @@ namespace Dashcam.Remote.Player
         public void UpdateMediaTitle(IReadOnlyList<Uri> mediaUris)
         {
             _currentMediaUris = mediaUris.ToArray();
+            OnPropertyChanged(nameof(HasMedia));
+            ((PlayerRelayCommand)TogglePlaybackCommand).RaiseCanExecuteChanged();
+            ((PlayerAsyncCommand)ExportMp4Command).RaiseCanExecuteChanged();
+            ((PlayerAsyncCommand)CaptureFrameCommand).RaiseCanExecuteChanged();
             OnPropertyChanged(nameof(SelectedCameraName));
+            OnPropertyChanged(nameof(IsFrontSelected));
+            OnPropertyChanged(nameof(IsRearSelected));
             _clipStartTimeMs = null;
             _clipEndTimeMs = null;
+            IsExportMode = false;
             OnPropertyChanged(nameof(ClipStartText));
             OnPropertyChanged(nameof(ClipEndText));
             OnPropertyChanged(nameof(ClipSelectionText));
@@ -362,17 +465,17 @@ namespace Dashcam.Remote.Player
                 IsSideBySide = false;
             }
             ((PlayerRelayCommand)SelectCameraCommand).RaiseCanExecuteChanged();
-            Zoom = 1;
+            PlaybackSpeed = 1;
             _gpsPoints = [];
             HasGpsTrack = false;
-            GpsTrackStatus = "Checking recording for GPS data…";
+            GpsTrackStatus = HasMedia ? "Checking recording for GPS data…" : "No video selected.";
             CurrentSpeedText = AverageSpeedText = DistanceText = LatitudeText = LongitudeText = AltitudeText = "—";
             _meanPointSpeedKmh = _speedStandardDeviationKmh = _maximumPointSpeedKmh = _minimumPointSpeedKmh = 0;
             OnPropertyChanged(nameof(GpsPoints));
             OnPropertyChanged(nameof(GpsRouteJson));
             OnPropertyChanged(nameof(SpeedDistributionSummary));
             MediaTitle = string.IsNullOrWhiteSpace(name) ? "Dashcam Player" : name;
-            PlaybackStatus = "Opening video…";
+            PlaybackStatus = HasMedia ? "Opening video…" : "Stopped";
             CurrentTimeText = "00:00";
             DurationText = "00:00";
             IsPlaying = false;
@@ -384,6 +487,11 @@ namespace Dashcam.Remote.Player
 
         private int FindPlaylistIndex(IReadOnlyList<Uri> mediaUris)
         {
+            if (mediaUris.Count == 0)
+            {
+                return -1;
+            }
+
             for (var index = 0; index < _playlistEntries.Count; index++)
             {
                 if (_playlistEntries[index].MediaUris.Any(mediaUri => mediaUris.Contains(mediaUri)))
@@ -392,8 +500,10 @@ namespace Dashcam.Remote.Player
                 }
             }
 
-            return _playlistEntries.Count > 0 ? 0 : -1;
+            return -1;
         }
+
+        public void PlayPlaylistEntry(PlayerPlaylistEntry entry) => PlaylistEntryRequested?.Invoke(entry);
 
         private void SelectPlaylistEntry(int index)
         {
@@ -403,6 +513,21 @@ namespace Dashcam.Remote.Player
             }
 
             PlaylistEntryRequested?.Invoke(_playlistEntries[index]);
+        }
+
+        private bool CanSelectCamera(object? value)
+        {
+            if (!HasMedia || value is null || !int.TryParse(value.ToString(), out var index))
+            {
+                return false;
+            }
+
+            if (HasRearCamera)
+            {
+                return index >= 0 && index < _players.Count;
+            }
+
+            return index == (IsRearOnlyMedia ? 1 : 0);
         }
 
         private void SetClipStart()
@@ -428,10 +553,11 @@ namespace Dashcam.Remote.Player
         }
 
         private bool CanExportClip() =>
+            IsExportMode &&
             ExportClipRequested is not null &&
             _clipStartTimeMs is long startTimeMs &&
             _clipEndTimeMs is long endTimeMs &&
-            endTimeMs > startTimeMs;
+            endTimeMs - startTimeMs >= 1000;
 
         private async Task ExportClipAsync()
         {
@@ -440,7 +566,73 @@ namespace Dashcam.Remote.Player
                 return;
             }
 
-            await ExportClipRequested!(SelectedCameraIndex, startTimeMs, endTimeMs);
+            if (await ExportClipRequested!(SelectedCameraIndex, startTimeMs, endTimeMs))
+            {
+                IsExportMode = false;
+            }
+        }
+
+        private void EnterClipExportMode()
+        {
+            var duration = ActiveMediaPlayer.Length;
+            if (!CanSeek || duration < 1000)
+            {
+                return;
+            }
+
+            _clipStartTimeMs = 0;
+            _clipEndTimeMs = duration;
+            OnPropertyChanged(nameof(ClipStartText));
+            OnPropertyChanged(nameof(ClipEndText));
+            OnPropertyChanged(nameof(ClipSelectionText));
+            IsExportMode = true;
+            ((PlayerAsyncCommand)ExportClipCommand).RaiseCanExecuteChanged();
+        }
+
+        public void UpdateClipStart(string value)
+        {
+            if (!TryParseClipTime(value, out var time) || _clipEndTimeMs is not long end || time > end - 1000)
+            {
+                OnPropertyChanged(nameof(ClipStartText));
+                return;
+            }
+
+            _clipStartTimeMs = time;
+            OnPropertyChanged(nameof(ClipSelectionText));
+            SeekToClipTime(time);
+            ((PlayerAsyncCommand)ExportClipCommand).RaiseCanExecuteChanged();
+        }
+
+        public void UpdateClipEnd(string value)
+        {
+            if (!TryParseClipTime(value, out var time) || _clipStartTimeMs is not long start || time < start + 1000 || time > ActiveMediaPlayer.Length)
+            {
+                OnPropertyChanged(nameof(ClipEndText));
+                return;
+            }
+
+            _clipEndTimeMs = time;
+            OnPropertyChanged(nameof(ClipSelectionText));
+            SeekToClipTime(time);
+            ((PlayerAsyncCommand)ExportClipCommand).RaiseCanExecuteChanged();
+        }
+
+        private void SeekToClipTime(long time)
+        {
+            ActiveMediaPlayer.Time = time;
+            RefreshPlaybackState();
+        }
+
+        private static bool TryParseClipTime(string value, out long milliseconds)
+        {
+            if (TimeSpan.TryParseExact(value, [@"hh\:mm\:ss", @"mm\:ss"], CultureInfo.InvariantCulture, out var time) && time >= TimeSpan.Zero)
+            {
+                milliseconds = (long)time.TotalMilliseconds;
+                return true;
+            }
+
+            milliseconds = 0;
+            return false;
         }
 
         private static string FormatClipTime(long? timeMs) =>
@@ -454,11 +646,6 @@ namespace Dashcam.Remote.Player
             }
 
             PlaybackStatus = status;
-            if (status == "Playing")
-            {
-                ApplyVideoCrop();
-            }
-
             RefreshPlaybackState();
         }
 
@@ -489,7 +676,7 @@ namespace Dashcam.Remote.Player
         {
             var isTs = Path.GetExtension(path).Equals(".ts", StringComparison.OrdinalIgnoreCase);
             var points = await Task.Run(() => isTs ? GpsTrack.ReadFromTs(path) : GpsTrack.Read(path));
-            if (expectedCameraIndex is not null && expectedCameraIndex != SelectedCameraIndex)
+            if (!HasMedia || expectedCameraIndex is not null && expectedCameraIndex != SelectedCameraIndex)
             {
                 return;
             }
@@ -559,6 +746,14 @@ namespace Dashcam.Remote.Player
             }
         }
 
+        private async Task CaptureFrameAsync()
+        {
+            if (HasMedia && CaptureFrameRequested is not null)
+            {
+                await CaptureFrameRequested(SelectedCameraIndex);
+            }
+        }
+
         private async Task ExportRoutePngAsync()
         {
             if (ExportRoutePngRequested is not null)
@@ -592,23 +787,17 @@ namespace Dashcam.Remote.Player
                 {
                     foreach (var mediaPlayer in _players)
                     {
-                        mediaPlayer.Pause();
+                        mediaPlayer.SetPause(true);
                     }
                 }
                 else
                 {
-                    foreach (var mediaPlayer in _players)
-                    {
-                        if (!mediaPlayer.Play())
-                        {
-                            PlaybackStatus = "Unable to play this file.";
-                        }
-                    }
+                    SideBySidePlaybackRequested?.Invoke();
                 }
             }
             else if (player.IsPlaying)
             {
-                player.Pause();
+                player.SetPause(true);
             }
             else if (!player.Play())
             {
@@ -616,6 +805,29 @@ namespace Dashcam.Remote.Player
             }
 
             RefreshPlaybackState();
+        }
+
+        public void ReplayPlayback()
+        {
+            if (!HasMedia)
+            {
+                return;
+            }
+
+            IEnumerable<MediaPlayer> players = IsSideBySide ? _players : new[] { ActiveMediaPlayer };
+            foreach (var player in players)
+            {
+                player.Time = 0;
+            }
+
+            if (IsSideBySide)
+            {
+                SideBySidePlaybackRequested?.Invoke();
+            }
+            else
+            {
+                ActiveMediaPlayer.Play();
+            }
         }
 
         private void StopPlayback()
@@ -626,7 +838,8 @@ namespace Dashcam.Remote.Player
             }
 
             PlaybackStatus = "Stopped";
-            RefreshPlaybackState();
+            UpdateMediaTitle([]);
+            PlaybackStatus = "Stopped";
         }
 
         private void ToggleMute()
@@ -669,7 +882,23 @@ namespace Dashcam.Remote.Player
                 return;
             }
 
+            if (!HasMedia)
+            {
+                IsPlaying = false;
+                CanSeek = false;
+                CurrentTimeText = DurationText = "00:00";
+                _updatingPosition = true;
+                Position = 0;
+                _updatingPosition = false;
+                return;
+            }
+
             var player = _players[Math.Clamp(SelectedCameraIndex, 0, _players.Count - 1)];
+            if (IsSideBySide && _players.Count > 1)
+            {
+                SynchronizeSideBySidePlayback(player);
+            }
+
             IsPlaying = player.IsPlaying;
             var duration = player.Length;
             CanSeek = player.IsSeekable && duration > 0;
@@ -681,33 +910,28 @@ namespace Dashcam.Remote.Player
             RefreshTelemetry();
         }
 
-        public void ApplyVideoCrop()
+        private void SynchronizeSideBySidePlayback(MediaPlayer referencePlayer)
         {
-            if (_players.Count == 0)
+            var referenceTime = Math.Max(0, referencePlayer.Time);
+            var referenceScale = referencePlayer.Scale;
+            foreach (var player in _players)
             {
-                return;
-            }
+                if (ReferenceEquals(player, referencePlayer))
+                {
+                    continue;
+                }
 
-            var player = ActiveMediaPlayer;
-            if (Zoom <= 1)
-            {
-                player.CropGeometry = string.Empty;
-                return;
-            }
+                var targetTime = Math.Min(referenceTime, Math.Max(0, player.Length));
+                if (Math.Abs(player.Time - targetTime) > 120)
+                {
+                    player.Time = targetTime;
+                }
 
-            uint sourceWidth = 0;
-            uint sourceHeight = 0;
-            player.Size(0, ref sourceWidth, ref sourceHeight);
-            if (sourceWidth == 0 || sourceHeight == 0)
-            {
-                return;
+                if (Math.Abs(player.Scale - referenceScale) > 0.001f)
+                {
+                    player.Scale = referenceScale;
+                }
             }
-
-            var cropWidth = Math.Max(1u, (uint)Math.Round(sourceWidth / Zoom));
-            var cropHeight = Math.Max(1u, (uint)Math.Round(sourceHeight / Zoom));
-            var cropX = (sourceWidth - cropWidth) / 2;
-            var cropY = (sourceHeight - cropHeight) / 2;
-            player.CropGeometry = $"{cropWidth}x{cropHeight}+{cropX}+{cropY}";
         }
 
         private GpsPoint? CurrentPoint

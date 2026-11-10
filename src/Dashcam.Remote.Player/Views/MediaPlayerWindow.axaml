@@ -19,17 +19,25 @@
     <StyleInclude Source="avares://Dashcam.Remote.Shared/Themes/Styles.axaml" />
     <StyleInclude Source="avares://Dashcam.Remote.Player/Themes/Styles.axaml" />
   </Window.Styles>
-<Grid x:Name="MainGrid" RowDefinitions="*,Auto,Auto" ColumnDefinitions="Auto,2.1*,1*" RowSpacing="10" ColumnSpacing="10" Margin="12">
-    <Border x:Name="Playlist" Grid.Column="0" Grid.RowSpan="3" Width="260" IsVisible="{Binding IsPlaylistOpen}" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" Padding="10">
+  <Grid x:Name="MainGrid" RowDefinitions="*,Auto,Auto,Auto" ColumnDefinitions="4*,11*,5*" RowSpacing="10" ColumnSpacing="10" Margin="12">
+    <Border x:Name="Playlist" Grid.Column="0" Grid.RowSpan="4" IsVisible="{Binding IsPlaylistOpen}" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="10">
       <Grid RowDefinitions="Auto,*" RowSpacing="8">
-        <TextBlock Text="Videos" FontSize="15" FontWeight="SemiBold" />
-        <ListBox Grid.Row="1" ItemsSource="{Binding PlaylistEntries}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel VerticalAlignment="Center" Spacing="2">
+            <TextBlock Text="Playlist" FontSize="15" FontWeight="SemiBold" />
+            <TextBlock Text="{Binding PlaylistCountText}" FontSize="11" Classes="secondary" />
+          </StackPanel>
+          <Button Grid.Column="1" Command="{Binding TogglePlaylistCommand}" ToolTip.Tip="Hide video list" Width="36" Height="36" Padding="8" HorizontalAlignment="Right">
+            <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/close.svg" Width="18" Height="18" Stretch="Uniform" />
+          </Button>
+        </Grid>
+        <ListBox x:Name="PlaylistList" Classes="playlist" Grid.Row="1" Background="Transparent" ItemsSource="{Binding PlaylistEntries}" SelectedItem="{Binding SelectedPlaylistEntry, Mode=OneWay}" DoubleTapped="OnPlaylistItemDoubleTapped">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="models:PlayerPlaylistEntry">
               <StackPanel Spacing="3" Margin="2,5">
                 <TextBlock Text="{Binding DisplayName}" FontSize="12"
                            TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding CreatedAtText}" Classes="secondary"
+                <TextBlock Text="{Binding SummaryText}" Classes="secondary"
                            FontSize="10" />
               </StackPanel>
             </DataTemplate>
@@ -37,54 +45,17 @@
         </ListBox>
       </Grid>
     </Border>
-    <Grid x:Name="VideoAndMapGrid" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="2" ColumnDefinitions="2.1*,1*" ColumnSpacing="10">
+    <Grid x:Name="VideoAndMapGrid" Grid.Row="0" Grid.Column="1" ColumnDefinitions="*">
       <Border x:Name="VideoPanel" Grid.Column="0" Background="{DynamicResource VideoBackgroundBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" ClipToBounds="True">
-        <Grid x:Name="VideoSurfaceGrid" ColumnDefinitions="*,*">
-        <vlc:VideoView x:Name="VideoSurface" Grid.Column="0" Grid.ColumnSpan="2">
-          <Grid x:Name="VideoOverlay" Background="{DynamicResource TransparentOverlayBrush}">
-            <Border VerticalAlignment="Top" Background="{DynamicResource VideoOverlayBrush}" Padding="12,8">
-              <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="10">
-                <TextBlock Text="{Binding MediaTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="1" Text="{Binding SelectedCameraName}" Foreground="{DynamicResource TextAccentBrush}" VerticalAlignment="Center" />
-                <Button Grid.Column="2" Command="{Binding TogglePlaylistCommand}" ToolTip.Tip="Show video list" Width="34" Height="30" Padding="6">
-                  <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/view_list.svg" Width="18" Height="18" Stretch="Uniform" />
-                </Button>
-                <Button Grid.Column="3" Command="{Binding ToggleSideBySideCommand}" Content="{Binding SideBySideButtonLabel}"
-                        ToolTip.Tip="Show front and rear cameras side by side"
-                        IsVisible="{Binding HasRearCamera}" Padding="8,4" />
-                <Button Grid.Column="4" Command="{Binding ToggleFullscreenCommand}" ToolTip.Tip="Toggle video fullscreen" Width="34" Height="30" Padding="6">
-                  <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/fullscreen.svg" Width="18" Height="18" Stretch="Uniform" />
-                </Button>
-              </Grid>
-            </Border>
-            <StackPanel HorizontalAlignment="Right" VerticalAlignment="Bottom" Orientation="Horizontal" Margin="12" Spacing="6">
-              <TextBlock Text="{Binding ZoomText}" Foreground="{DynamicResource WhiteBrush}" VerticalAlignment="Center" />
-              <Slider x:Name="ZoomSlider" Minimum="1" Maximum="2" TickFrequency="0.5" IsSnapToTickEnabled="True" Value="{Binding Zoom, Mode=TwoWay}" Width="112" VerticalAlignment="Center" ToolTip.Tip="Zoom video from 1× to 2×" />
-              <Button Classes="camera" Classes.active="{Binding IsFrontSelected}" Command="{Binding SelectCameraCommand}" CommandParameter="0" ToolTip.Tip="Front camera" Padding="10,6" MinWidth="74" IsVisible="{Binding HasRearCamera}">
-                <StackPanel Orientation="Horizontal" Spacing="5"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/video_camera_front.svg" Width="16" Height="16" Stretch="Uniform"/><TextBlock Text="Front"/></StackPanel>
-              </Button>
-              <Button Classes="camera" Classes.active="{Binding IsRearSelected}" Command="{Binding SelectCameraCommand}" CommandParameter="1" ToolTip.Tip="Rear camera" Padding="10,6" MinWidth="74" IsVisible="{Binding HasRearCamera}">
-                <StackPanel Orientation="Horizontal" Spacing="5"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/videocam.svg" Width="16" Height="16" Stretch="Uniform"/><TextBlock Text="Rear"/></StackPanel>
-              </Button>
-            </StackPanel>
-          </Grid>
-        </vlc:VideoView>
-        <Border x:Name="RearVideoPanel" Grid.Column="1" IsVisible="{Binding IsSideBySide}"
-                Background="{DynamicResource VideoBackgroundBrush}"
-                BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1"
-                ClipToBounds="True">
-          <Grid>
-            <vlc:VideoView x:Name="RearVideoSurface" />
-            <Border VerticalAlignment="Top" HorizontalAlignment="Right"
-                    Background="{DynamicResource VideoOverlayBrush}" Padding="10,6">
-              <TextBlock Text="Rear view" Foreground="{DynamicResource TextAccentBrush}" />
-            </Border>
-          </Grid>
-        </Border>
+        <Grid x:Name="VideoSurfaceGrid" ColumnDefinitions="*,0">
+        <vlc:VideoView x:Name="VideoSurface" Grid.Column="0" />
+        <vlc:VideoView x:Name="RearVideoSurface" Grid.Column="1" ClipToBounds="True" />
         </Grid>
       </Border>
 
-      <Border x:Name="MapPanel" Grid.Column="1" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="10">
+    </Grid>
+
+      <Border x:Name="MapPanel" Grid.Row="0" Grid.Column="2" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="10">
         <Grid RowDefinitions="Auto,*" RowSpacing="8">
           <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
             <StackPanel VerticalAlignment="Center" Spacing="2">
@@ -100,52 +71,66 @@
           </Grid>
           <Border Grid.Row="1" Background="{DynamicResource MediaMapBackgroundBrush}" CornerRadius="0" ClipToBounds="True">
             <Grid>
-              <controls:GpsRouteMapControl x:Name="GpsMap" Points="{Binding GpsPoints}" CurrentPoint="{Binding GpsCurrentPoint}" MeanSpeedKmh="{Binding MeanPointSpeedKmh}" SpeedDeviationKmh="{Binding SpeedStandardDeviationKmh}" />
-              <!--<TextBlock Text="© OpenStreetMap contributors" FontSize="9" Foreground="{DynamicResource MapAttributionForegroundBrush}" Background="{DynamicResource MapAttributionBackgroundBrush}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="4" Padding="3,1" />-->
+              <controls:GpsRouteMapControl x:Name="GpsMap" Points="{Binding GpsPoints}" CurrentPoint="{Binding GpsCurrentPoint}" MeanSpeedKmh="{Binding MeanPointSpeedKmh}" SpeedDeviationKmh="{Binding SpeedStandardDeviationKmh}" ZoomOffset="{Binding MapZoomOffset}" IsSatellite="{Binding IsSatelliteMap}" />
+              <StackPanel HorizontalAlignment="Right" VerticalAlignment="Top" Margin="8" Spacing="4">
+                <Button Command="{Binding ZoomMapInCommand}" ToolTip.Tip="Zoom in" Width="36" Height="36" Padding="8" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                  <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/zoom_in.svg" Width="20" Height="20" Stretch="Uniform" />
+                </Button>
+                <Button Command="{Binding ZoomMapOutCommand}" ToolTip.Tip="Zoom out" Width="36" Height="36" Padding="8" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                  <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/zoom_out.svg" Width="20" Height="20" Stretch="Uniform" />
+                </Button>
+                <Button Command="{Binding ToggleMapLayerCommand}" Classes.active="{Binding IsSatelliteMap}" ToolTip.Tip="Switch map layer" Width="36" Height="36" Padding="8" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                  <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/satellite.svg" Width="20" Height="20" Stretch="Uniform" />
+                </Button>
+              </StackPanel>
+              <TextBlock Text="© OpenStreetMap contributors | Esri World Imagery" FontSize="9" Foreground="{DynamicResource MapAttributionForegroundBrush}" Background="{DynamicResource MapAttributionBackgroundBrush}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="4" Padding="3,1" />
             </Grid>
           </Border>
         </Grid>
       </Border>
-    </Grid>
 
-    <Border x:Name="TelemetryPanel" Grid.Row="2" Grid.Column="1" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="12">
-      <Grid RowDefinitions="*,*" ColumnDefinitions="*,*,*,*" RowSpacing="8" ColumnSpacing="12">
-        <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Spacing="2">
+    <Border x:Name="SpeedInfoPanel" Grid.Row="2" Grid.Column="1" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" Padding="10">
+      <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="SPEED" FontSize="10" Foreground="{DynamicResource TextAccentBrush}" />
           <TextBlock Text="{Binding CurrentSpeedText}" FontSize="16" FontWeight="SemiBold" />
         </StackPanel>
-        <StackPanel Grid.Row="0" Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="MAX" FontSize="10" Foreground="{DynamicResource TextAccentBrush}" />
           <TextBlock Text="{Binding MaximumSpeedText}" FontSize="16" FontWeight="SemiBold" />
         </StackPanel>
-        <StackPanel Grid.Row="0" Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+        <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="MIN" FontSize="10" Foreground="{DynamicResource TextAccentBrush}" />
           <TextBlock Text="{Binding MinimumSpeedText}" FontSize="16" FontWeight="SemiBold" />
         </StackPanel>
-        <StackPanel Grid.Row="0" Grid.Column="3" VerticalAlignment="Center" Spacing="2">
+        <StackPanel Grid.Column="3" VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="AVERAGE" FontSize="10" Foreground="{DynamicResource TextAccentBrush}" />
           <TextBlock Text="{Binding AverageSpeedText}" FontSize="16" FontWeight="SemiBold" />
         </StackPanel>
-        <StackPanel Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" Spacing="2">
-          <TextBlock Text="DISTANCE" FontSize="10" Foreground="{DynamicResource TextAccentBrush}" />
-          <TextBlock Text="{Binding DistanceText}" FontSize="16" FontWeight="SemiBold" />
-        </StackPanel>
-        <StackPanel Grid.Row="1" Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+      </Grid>
+    </Border>
+    <Border x:Name="LocationInfoPanel" Grid.Row="3" Grid.Column="1" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" Padding="10">
+      <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="8">
+        <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="LATITUDE" FontSize="10" Foreground="{DynamicResource TextAccentBrush}" />
           <TextBlock Text="{Binding LatitudeText}" FontSize="16" FontWeight="SemiBold" />
         </StackPanel>
-        <StackPanel Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" Spacing="2">
+        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="LONGITUDE" FontSize="10" Foreground="{DynamicResource TextAccentBrush}" />
           <TextBlock Text="{Binding LongitudeText}" FontSize="16" FontWeight="SemiBold" />
         </StackPanel>
-        <StackPanel Grid.Row="1" Grid.Column="3" VerticalAlignment="Center" Spacing="2">
+        <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="2">
           <TextBlock Text="ALTITUDE" FontSize="10" Foreground="{DynamicResource TextAccentBrush}" />
           <TextBlock Text="{Binding AltitudeText}" FontSize="16" FontWeight="SemiBold" />
+        </StackPanel>
+        <StackPanel Grid.Column="3" VerticalAlignment="Center" Spacing="2">
+          <TextBlock Text="DISTANCE" FontSize="10" Foreground="{DynamicResource TextAccentBrush}" />
+          <TextBlock Text="{Binding DistanceText}" FontSize="16" FontWeight="SemiBold" />
         </StackPanel>
       </Grid>
     </Border>
 
-    <Border x:Name="SpeedDistributionPanel" Grid.Row="1" Grid.Column="2" Grid.RowSpan="2" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="10">
+    <Border x:Name="SpeedDistributionPanel" Grid.Row="1" Grid.Column="2" Grid.RowSpan="3" Background="{DynamicResource PanelBaseBrush}" BorderBrush="{DynamicResource PanelBorderBrush}" BorderThickness="1" CornerRadius="0" Padding="10">
       <Grid RowDefinitions="Auto,*" RowSpacing="8">
           <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
             <StackPanel VerticalAlignment="Center" Spacing="2">
@@ -170,37 +155,50 @@
           <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Position, Mode=TwoWay}" IsEnabled="{Binding CanSeek}" VerticalAlignment="Center" />
           <TextBlock Classes="secondary" Grid.Column="2" Text="{Binding DurationText}" VerticalAlignment="Center" />
         </Grid>
-        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*">
+        <Grid Grid.Row="1" ColumnDefinitions="*,Auto,*" IsVisible="{Binding IsPlaybackControlsMode}">
           <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="8">
-            <Button Command="{Binding PreviousVideoCommand}" ToolTip.Tip="Previous video" Width="42" Height="38" Padding="8">
+            <Button Command="{Binding PreviousVideoCommand}" ToolTip.Tip="Previous video" Width="36" Height="36" Padding="8">
               <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/chevron_left.svg" Width="20" Height="20" Stretch="Uniform" />
             </Button>
-            <Button Command="{Binding SeekBackwardCommand}" ToolTip.Tip="Back 10 seconds" Width="42" Height="38" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/replay_10.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
-            <Button Command="{Binding TogglePlaybackCommand}" ToolTip.Tip="{Binding PlaybackButtonLabel}" Width="42" Height="38" Padding="8">
+            <Button Command="{Binding SeekBackwardCommand}" ToolTip.Tip="Back 10 seconds" Width="36" Height="36" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/replay_10.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
+            <Button Command="{Binding TogglePlaybackCommand}" ToolTip.Tip="{Binding PlaybackButtonLabel}" Width="36" Height="36" Padding="8">
               <svg:Svg Path="{Binding PlaybackButtonIconPath}" Width="20" Height="20" Stretch="Uniform"/>
             </Button>
-            <Button Command="{Binding SeekForwardCommand}" ToolTip.Tip="Forward 10 seconds" Width="42" Height="38" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/forward_10.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
-            <Button Command="{Binding NextVideoCommand}" ToolTip.Tip="Next video" Width="42" Height="38" Padding="8">
+            <Button Command="{Binding SeekForwardCommand}" ToolTip.Tip="Forward 10 seconds" Width="36" Height="36" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/forward_10.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
+            <Button Command="{Binding NextVideoCommand}" ToolTip.Tip="Next video" Width="36" Height="36" Padding="8">
               <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/chevron_right.svg" Width="20" Height="20" Stretch="Uniform" />
             </Button>
-            <Button Command="{Binding StopPlaybackCommand}" ToolTip.Tip="Stop" Width="42" Height="38" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/stop_circle.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
-            <Button Command="{Binding ToggleMuteCommand}" ToolTip.Tip="{Binding MuteButtonLabel}" Width="42" Height="38" Padding="8"><svg:Svg Path="{Binding MuteButtonIconPath}" Width="20" Height="20" Stretch="Uniform" /></Button>
+            <Button Command="{Binding StopPlaybackCommand}" ToolTip.Tip="Stop" Width="36" Height="36" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/stop_circle.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
+            <Button Command="{Binding ToggleMuteCommand}" ToolTip.Tip="{Binding MuteButtonLabel}" Width="36" Height="36" Padding="8"><svg:Svg Path="{Binding MuteButtonIconPath}" Width="20" Height="20" Stretch="Uniform" /></Button>
+            <Slider Minimum="0" Maximum="100" Value="{Binding Volume, Mode=TwoWay}" Width="110" VerticalAlignment="Center" ToolTip.Tip="Volume" />
           </StackPanel>
           <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-            <Button Command="{Binding ExportMp4Command}" ToolTip.Tip="Export selected camera to MP4" Width="42" Height="38" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/download.svg" Width="20" Height="20" Stretch="Uniform"/></Button>
+            <Button Command="{Binding ToggleLoopCommand}" ToolTip.Tip="Repeat video" Classes.active="{Binding IsLooping}" Width="36" Height="36" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/repeat.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
+            <Button Command="{Binding EnterClipExportModeCommand}" ToolTip.Tip="Export a video clip" Width="36" Height="36" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/download.svg" Width="20" Height="20" Stretch="Uniform"/></Button>
+            <Button Command="{Binding CaptureFrameCommand}" ToolTip.Tip="Take video snapshot" Width="36" Height="36" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/photo_camera.svg" Width="20" Height="20" Stretch="Uniform" /></Button>
           </StackPanel>
         </Grid>
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center"
-                    VerticalAlignment="Center" Spacing="8">
-          <TextBlock Text="{Binding ClipSelectionText}" Classes="secondary"
-                     VerticalAlignment="Center" Margin="0,0,4,0" />
-          <Button Command="{Binding SetClipStartCommand}" Content="Set start"
-                  ToolTip.Tip="Set clip start to the current play head" IsEnabled="{Binding CanSeek}" />
-          <Button Command="{Binding SetClipEndCommand}" Content="Set end"
-                  ToolTip.Tip="Set clip end to the current play head" IsEnabled="{Binding CanSeek}" />
-          <Button Command="{Binding ExportClipCommand}" Content="Export clip"
-                  ToolTip.Tip="Export the selected video segment" />
-        </StackPanel>
+        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="10" IsVisible="{Binding IsExportMode}">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+            <TextBlock Text="Start" VerticalAlignment="Center" />
+            <TextBox Text="{Binding ClipStartText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Width="82" Height="30" VerticalAlignment="Center" />
+            <Button Command="{Binding SeekBackwardCommand}" ToolTip.Tip="Back 10 seconds" Width="36" Height="36" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/replay_10.svg" Width="18" Height="18" Stretch="Uniform" /></Button>
+            <Button Command="{Binding TogglePlaybackCommand}" ToolTip.Tip="{Binding PlaybackButtonLabel}" Width="36" Height="36" Padding="8"><svg:Svg Path="{Binding PlaybackButtonIconPath}" Width="18" Height="18" Stretch="Uniform" /></Button>
+            <Button Command="{Binding SeekForwardCommand}" ToolTip.Tip="Forward 10 seconds" Width="36" Height="36" Padding="8"><svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/forward_10.svg" Width="18" Height="18" Stretch="Uniform" /></Button>
+            <Button Command="{Binding ToggleMuteCommand}" ToolTip.Tip="{Binding MuteButtonLabel}" Width="36" Height="36" Padding="8"><svg:Svg Path="{Binding MuteButtonIconPath}" Width="18" Height="18" Stretch="Uniform" /></Button>
+            <Slider Minimum="0" Maximum="100" Value="{Binding Volume, Mode=TwoWay}" Width="84" VerticalAlignment="Center" ToolTip.Tip="Volume" />
+            <TextBlock Text="End" VerticalAlignment="Center" />
+            <TextBox Text="{Binding ClipEndText, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" Width="82" Height="30" VerticalAlignment="Center" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Spacing="6">
+            <Button Command="{Binding CancelClipExportModeCommand}" ToolTip.Tip="Cancel clip export" Background="#C62828" BorderBrush="#C62828" Foreground="White" Width="36" Height="36" Padding="8">
+              <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/cancel.svg" Width="18" Height="18" Stretch="Uniform" />
+            </Button>
+            <Button Command="{Binding ExportClipCommand}" ToolTip.Tip="Save clip as MP4" Width="36" Height="36" Padding="8">
+              <svg:Svg Path="avares://Dashcam.Remote.Shared/Assets/Icons/save.svg" Width="18" Height="18" Stretch="Uniform" />
+            </Button>
+          </StackPanel>
+        </Grid>
       </Grid>
     </Border>
   </Grid>

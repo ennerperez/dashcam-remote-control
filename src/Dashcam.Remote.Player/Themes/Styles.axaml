@@ -10,4 +10,13 @@
     <Setter Property="Background" Value="{DynamicResource TileHoverBrush}" />
     <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
   </Style>
+  <Style Selector="Window.media-player-window ListBoxItem:selected">
+    <Setter Property="Background" Value="{DynamicResource TileHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Window.media-player-window Button.active">
+    <Setter Property="Background" Value="{DynamicResource TileHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+  </Style>
 </Styles>

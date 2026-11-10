@@ -26,15 +26,21 @@ namespace Dashcam.Remote.Player
             AvaloniaProperty.Register<GpsRouteMapControl, double>(nameof(MeanSpeedKmh));
         public static readonly StyledProperty<double> SpeedDeviationKmhProperty =
             AvaloniaProperty.Register<GpsRouteMapControl, double>(nameof(SpeedDeviationKmh));
+        public static readonly StyledProperty<int> ZoomOffsetProperty =
+            AvaloniaProperty.Register<GpsRouteMapControl, int>(nameof(ZoomOffset));
+        public static readonly StyledProperty<bool> IsSatelliteProperty =
+            AvaloniaProperty.Register<GpsRouteMapControl, bool>(nameof(IsSatellite));
 
         public IReadOnlyList<GpsPoint> Points { get => GetValue(PointsProperty); set => SetValue(PointsProperty, value); }
         public GpsPoint? CurrentPoint { get => GetValue(CurrentPointProperty); set => SetValue(CurrentPointProperty, value); }
         public double MeanSpeedKmh { get => GetValue(MeanSpeedKmhProperty); set => SetValue(MeanSpeedKmhProperty, value); }
         public double SpeedDeviationKmh { get => GetValue(SpeedDeviationKmhProperty); set => SetValue(SpeedDeviationKmhProperty, value); }
+        public int ZoomOffset { get => GetValue(ZoomOffsetProperty); set => SetValue(ZoomOffsetProperty, value); }
+        public bool IsSatellite { get => GetValue(IsSatelliteProperty); set => SetValue(IsSatelliteProperty, value); }
 
         static GpsRouteMapControl()
         {
-            AffectsRender<GpsRouteMapControl>(PointsProperty, CurrentPointProperty, MeanSpeedKmhProperty, SpeedDeviationKmhProperty);
+            AffectsRender<GpsRouteMapControl>(PointsProperty, CurrentPointProperty, MeanSpeedKmhProperty, SpeedDeviationKmhProperty, ZoomOffsetProperty, IsSatelliteProperty);
         }
 
         public override void Render(DrawingContext context)
@@ -55,7 +61,7 @@ namespace Dashcam.Remote.Player
                 for (var tileX = firstX; tileX <= lastX; tileX++)
                 {
                     var wrappedX = ((tileX % tileCount) + tileCount) % tileCount;
-                    var key = new TileKey(viewport.Zoom, wrappedX, tileY);
+                    var key = new TileKey(viewport.Zoom, wrappedX, tileY, IsSatellite);
                     var target = new Rect(tileX * TileSize - left, tileY * TileSize - top, TileSize, TileSize);
                     if (_tiles.TryGetValue(key, out var bitmap))
                     {
@@ -145,7 +151,7 @@ namespace Dashcam.Remote.Player
             var width = Math.Max(1, maxX - minX);
             var height = Math.Max(1, maxY - minY);
             var scale = Math.Min((Bounds.Width - 48) / width, (Bounds.Height - 48) / height);
-            var zoom = Math.Clamp(18 + (int)Math.Floor(Math.Log2(Math.Max(.0001, scale))), 1, 18);
+            var zoom = Math.Clamp(18 + (int)Math.Floor(Math.Log2(Math.Max(.0001, scale))) + ZoomOffset, 1, 18);
             var projectedCenter = Project((Points.Min(point => point.Latitude) + Points.Max(point => point.Latitude)) / 2,
                 (Points.Min(point => point.Longitude) + Points.Max(point => point.Longitude)) / 2, zoom);
             return new Viewport(zoom, projectedCenter.X, projectedCenter.Y);
@@ -188,7 +194,10 @@ namespace Dashcam.Remote.Player
                     return;
                 }
 
-                using var request = new HttpRequestMessage(HttpMethod.Get, $"https://tile.openstreetmap.org/{key.Zoom}/{key.X}/{key.Y}.png");
+                var tileUrl = key.IsSatellite
+                    ? $"https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{key.Zoom}/{key.Y}/{key.X}"
+                    : $"https://tile.openstreetmap.org/{key.Zoom}/{key.X}/{key.Y}.png";
+                using var request = new HttpRequestMessage(HttpMethod.Get, tileUrl);
                 if (metadata?.ETag is { Length: > 0 } etag && EntityTagHeaderValue.TryParse(etag, out var tag))
                 {
                     request.Headers.IfNoneMatch.Add(tag);
@@ -267,7 +276,7 @@ namespace Dashcam.Remote.Player
 
         private static string GetTilePath(TileKey key) => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "DashcamRemoteControl", "MapTiles", key.Zoom.ToString(), key.X.ToString(), $"{key.Y}.png");
+            "DashcamRemoteControl", "MapTiles", key.IsSatellite ? "satellite" : "street", key.Zoom.ToString(), key.X.ToString(), $"{key.Y}.png");
 
         private static HttpClient CreateHttpClient()
         {
@@ -276,7 +285,7 @@ namespace Dashcam.Remote.Player
             return client;
         }
 
-        private readonly record struct TileKey(int Zoom, int X, int Y);
+        private readonly record struct TileKey(int Zoom, int X, int Y, bool IsSatellite);
         private readonly record struct Viewport(int Zoom, double CenterX, double CenterY);
         private sealed record TileMetadata(DateTimeOffset ExpiresAt, string? ETag, DateTimeOffset? LastModified);
     }

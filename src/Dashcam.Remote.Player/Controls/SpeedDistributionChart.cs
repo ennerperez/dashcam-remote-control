@@ -36,7 +36,7 @@ namespace Dashcam.Remote.Player
                 return;
             }
 
-            var background = new SolidColorBrush(Color.Parse("#071A3A"));
+            var background = new SolidColorBrush(Color.Parse("#0C2B68"));
             context.DrawRectangle(background, null, new Rect(0, 0, width, height));
             var left = 42d;
             var right = width - 10;
