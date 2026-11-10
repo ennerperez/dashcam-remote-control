@@ -2,36 +2,37 @@ using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
 using Avalonia.Platform.Storage;
 
-namespace Dashcam.Remote.Player;
-
-public partial class FolderSelectionWindow : Window
+namespace Dashcam.Remote.Player
 {
-    private readonly FolderSelectionViewModel _viewModel;
-
-    public FolderSelectionWindow()
+    public partial class FolderSelectionWindow : Window
     {
-        AvaloniaXamlLoader.Load(this);
+        private readonly FolderSelectionViewModel _viewModel;
 
-        _viewModel = new FolderSelectionViewModel
+        public FolderSelectionWindow()
         {
-            ChooseFolderRequested = ChooseFolderAsync
-        };
-        _viewModel.FolderSelected += path => FolderSelected?.Invoke(path);
-        _viewModel.CancelRequested += Close;
-        DataContext = _viewModel;
-    }
+            AvaloniaXamlLoader.Load(this);
 
-    public event Action<string>? FolderSelected;
+            _viewModel = new FolderSelectionViewModel
+            {
+                ChooseFolderRequested = ChooseFolderAsync
+            };
+            _viewModel.FolderSelected += path => FolderSelected?.Invoke(path);
+            _viewModel.CancelRequested += Close;
+            DataContext = _viewModel;
+        }
 
-    private async Task<string?> ChooseFolderAsync()
-    {
-        var storage = TopLevel.GetTopLevel(this)?.StorageProvider
-            ?? throw new InvalidOperationException("Folder picker is unavailable.");
-        var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        public event Action<string>? FolderSelected;
+
+        private async Task<string?> ChooseFolderAsync()
         {
-            Title = "Choose recordings folder",
-            AllowMultiple = false
-        });
-        return folders.FirstOrDefault()?.TryGetLocalPath();
+            var storage = TopLevel.GetTopLevel(this)?.StorageProvider
+                          ?? throw new InvalidOperationException("Folder picker is unavailable.");
+            var folders = await storage.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Choose recordings folder",
+                AllowMultiple = false
+            });
+            return folders.FirstOrDefault()?.TryGetLocalPath();
+        }
     }
 }
