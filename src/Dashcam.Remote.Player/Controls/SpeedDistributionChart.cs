@@ -2,8 +2,9 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Dashcam.Remote;
 
-namespace Dashcam.Remote
+namespace Dashcam.Remote.Player
 {
     public sealed class SpeedDistributionChart : Control
     {
@@ -35,7 +36,7 @@ namespace Dashcam.Remote
                 return;
             }
 
-            var background = new SolidColorBrush(Color.Parse("#071A3A"));
+            var background = new SolidColorBrush(Color.Parse("#0C2B68"));
             context.DrawRectangle(background, null, new Rect(0, 0, width, height));
             var left = 42d;
             var right = width - 10;

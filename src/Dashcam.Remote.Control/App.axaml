@@ -5,12 +5,13 @@
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <ResourceInclude Source="avares://Dashcam.Remote.Control/Themes/Palette.axaml" />
+        <ResourceInclude Source="avares://Dashcam.Remote.Shared/Themes/Palette.axaml" />
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
+    <StyleInclude Source="avares://Dashcam.Remote.Shared/Themes/Styles.axaml" />
     <StyleInclude Source="avares://Dashcam.Remote.Control/Themes/Styles.axaml" />
   </Application.Styles>
 </Application>

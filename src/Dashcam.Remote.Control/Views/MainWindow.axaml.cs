@@ -8,6 +8,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using LibVLCSharp.Avalonia;
 using LibVLCSharp.Shared;
+using Dashcam.Remote.Player;
 
 namespace Dashcam.Remote
 {
@@ -289,7 +290,7 @@ namespace Dashcam.Remote
             }
             _filePlayerWindow?.Close();
 
-            var window = new MediaPlayerWindow(this, uris);
+            var window = new MediaPlayerWindow(this, uris, PlaybackMediaCache.DeleteForMediaUris);
             _filePlayerWindow = window;
             window.Closed += (_, _) =>
             {

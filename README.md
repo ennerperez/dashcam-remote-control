@@ -66,7 +66,7 @@ dotnet test dashcam-remote-control.slnx
 
 ## Architecture
 
-The app uses Avalonia and MVVM. Views bind to view models; device HTTP requests and playback work stay in the service layer. Camera metadata requests are serialized and spaced. File transfers use a separate queue with a maximum of five concurrent downloads.
+The app uses Avalonia and MVVM. Views bind to view models. The player UI and GPS playback controls live in `Dashcam.Remote.Player`; common icons, colors, and styles live in `Dashcam.Remote.Shared`. Device HTTP requests and playback media caching stay in the app's service layer. Camera metadata requests are serialized and spaced. File transfers use a separate queue with a maximum of five concurrent downloads.
 
 The camera API uses plain HTTP over Wi-Fi. The app does not use USB drivers.
 
@@ -74,12 +74,12 @@ The camera API uses plain HTTP over Wi-Fi. The app does not use USB drivers.
 
 | Path | Purpose |
 | --- | --- |
+| `src/Dashcam.Remote.Shared/` | Shared Avalonia icons, palette, and styles |
+| `src/Dashcam.Remote.Player/` | Reusable Avalonia player library and GPS playback controls |
 | `src/Dashcam.Remote.Control/Views/` | Avalonia windows and AXAML views |
 | `src/Dashcam.Remote.Control/ViewModels/` | UI state and commands |
-| `src/Dashcam.Remote.Control/Models/` | Device, file explorer, and GPS data models |
-| `src/Dashcam.Remote.Control/Controls/` | Custom map and chart controls |
-| `src/Dashcam.Remote.Control/Services/` | Device API and playback services |
-| `src/Dashcam.Remote.Control/Assets/` | Icons and other app assets |
+| `src/Dashcam.Remote.Control/Models/` | Device and file explorer data models |
+| `src/Dashcam.Remote.Control/Services/` | Device API and playback media cache |
 | `tests/UnitTests/` | xUnit unit tests |
 | `docs/STACK.md` | Stack, architecture, and protocol notes |
 

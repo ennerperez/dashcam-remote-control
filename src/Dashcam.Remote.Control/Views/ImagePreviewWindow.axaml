@@ -3,7 +3,7 @@
         xmlns:vm="using:Dashcam.Remote"
         xmlns:remote="clr-namespace:Dashcam.Remote"
         x:Class="Dashcam.Remote.ImagePreviewWindow"
-        Icon="/Assets/Icons/dashcam-remote-control.ico"
+        Icon="avares://Dashcam.Remote.Shared/Assets/Icons/dashcam-remote-control.ico"
         Title="Dashcam Photo Preview"
         Width="900" Height="650" MinWidth="500" MinHeight="360"
         CanResize="True" Classes="app-window image-preview-window"
